@@ -97,14 +97,14 @@ function init(payload) {
 };
 
 // process - 2.krok - redirect url
-function getRedirectUrl(data) {
+function getRedirectUrl(id) {
   const dttm = _createDttm();
   const signature = _sign(_createMessageString({
     merchantId: process.env.MERCHANT_ID,
-    payId: data.payId,
+    payId: id,
     dttm
   }))
-  return `${GATE_URL}/payment/process/${process.env.MERCHANT_ID}/${data.payId}/${dttm}/${encodeURIComponent(signature)}`;
+  return `${GATE_URL}/payment/process/${process.env.MERCHANT_ID}/${id}/${dttm}/${encodeURIComponent(signature)}`;
 }
 
 // status
@@ -139,11 +139,11 @@ function status(id) {
 }
 
 // reverse
-function reverse(paymentId) {
+function reverse(id) {
   return new RSVP.Promise((resolve, reject) => {
     const payload = {
       merchantId: process.env.MERCHANT_ID,
-      payId: paymentId,
+      payId: id,
       dttm: _createDttm(),
     }
 
@@ -170,11 +170,11 @@ function reverse(paymentId) {
 };
 
 //close
-function close(paymentId, amount) {
+function close(id, amount) {
   return new RSVP.Promise((resolve, reject) => {
     const payload = {
       merchantId: process.env.MERCHANT_ID,
-      payId: paymentId,
+      payId: id,
       dttm: _createDttm(),
       amount
     }
@@ -202,11 +202,11 @@ function close(paymentId, amount) {
 };
 
 //refund
-function refund(paymentId, amount) {
+function refund(id, amount) {
   return new RSVP.Promise((resolve, reject) => {
     const payload = {
       merchantId: process.env.MERCHANT_ID,
-      payId: paymentId,
+      payId: id,
       dttm: _createDttm(),
       amount
     }
@@ -234,32 +234,53 @@ function refund(paymentId, amount) {
 };
 
 //refund
-function echo() {
+function echo(method = 'POST') {
   return new RSVP.Promise((resolve, reject) => {
     const payload = {
       merchantId: process.env.MERCHANT_ID,
       dttm: _createDttm()
     }
 
-    payload["signature"] = _sign(_createMessageString(payload))
-    rp({
-      url: `${GATE_URL}/echo`,
-      method: "POST",
-      json: true,
-      body: payload
-    }).then(result => {
-      if (_verify(_createResultMessage(result), result.signature)) {
-        if (result.resultCode.toString() === '0') {
-          resolve(result)
+    payload["signature"] = _sign(_createMessageString(payload));
+
+    if (method === 'POST') {
+      rp({
+        url: `${GATE_URL}/echo`,
+        method: 'POST',
+        json: true,
+        body: payload
+      }).then(result => {
+        if (_verify(_createResultMessage(result), result.signature)) {
+          if (result.resultCode.toString() === '0') {
+            resolve(result)
+          } else {
+            reject(result);
+          }
         } else {
-          reject(result);
+          reject(Error('Echo - Verification failed'));
         }
-      } else {
-        reject(Error('Echo - Verification failed'));
-      }
-    }).catch(error => {
-      reject(error);
-    });
+      }).catch(error => {
+        reject(error);
+      });
+    } else {
+      rp({
+        url: `${GATE_URL}/echo/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`,
+        method: 'GET',
+        json: true
+      }).then(result => {
+        if (_verify(_createResultMessage(result), result.signature)) {
+          if (result.resultCode.toString() === '0') {
+            resolve(result)
+          } else {
+            reject(result);
+          }
+        } else {
+          reject(Error('Echo - Verification failed'));
+        }
+      }).catch(error => {
+        reject(error);
+      });
+    }
   })
 };
 
@@ -276,8 +297,8 @@ function payOrder(order, close = true) {
   payload['closePayment'] = close;
 
   return init(payload).then(result => {
-    return getRedirectUrl(result)
-  })
+    return getRedirectUrl(result.payId);
+  });
 }
 
 function verifyResult(result) {
@@ -297,6 +318,8 @@ function verifyResult(result) {
 exports.payOrder = payOrder;
 exports.verifyResult = verifyResult;
 exports.status = status;
+exports.init = init;
+exports.getRedirectUrl = getRedirectUrl;
 exports.reverse = reverse;
 exports.close = close;
 exports.refund = refund;

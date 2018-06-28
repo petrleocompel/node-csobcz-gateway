@@ -49,25 +49,6 @@ By setting ```payloadTemplate``` can by overwrited more ```init``` method payloa
   "returnMethod":"POST"
 }
 ```
-* gateUrl: config.gateUrl || process.env.GATEWAY_URL,
-* privateKey: config.privateKey || process.env.MERCHANT_PRIVATE_KEY,
-* merchantPublicKey: config.merchantPublicKey || process.env.MERCHANT_PUBLIC_KEY,
-* bankPublicKey: config.bankPublicKey || process.env.BANK_PUBLIC_KEY,
-* calbackUrl: config.calbackUrl || process.env.CALLBACK_URL,
-* merchantId: config.merchantId || process.env.MERCHANT_ID
-    }
-
-    const PAYLOAD_TEMPLATE = {
-      "merchantId": configuration.merchantId,
-      "payOperation":"payment",
-      "payMethod":"card",
-      "currency":"CZK",
-      "language":"CZ",
-      "returnUrl": configuration.calbackUrl,
-      "returnMethod":"POST"
-    }
-
-    configuration.payloadTemplate = PAYLOAD_TEMPLATE;
 
 ## Available methods
 * ```status(string payId)``` - returns payment status

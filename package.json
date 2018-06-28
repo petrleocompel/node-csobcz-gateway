@@ -1,0 +1,25 @@
+{
+  "name": "csobcz_payment_gateway",
+  "version": "0.0.1",
+  "description": "CSOB CZ payment gateway module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "request": "^2.87.0",
+    "request-promise-native": "^1.0.5",
+    "rsvp": "^4.8.2"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mival/csob_gateway.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mival/csob_gateway/issues"
+  },
+  "homepage": "https://github.com/mival/csob_gateway#readme"
+}

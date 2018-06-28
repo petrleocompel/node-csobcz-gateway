@@ -1,12 +1,73 @@
 # ČSOB CZ payment modules
 
-[Source](https://github.com/mival/csob_gateway)|
+[Source](https://github.com/mival/csob_gateway) |
 [Gateway documentation](https://github.com/csob/paymentgateway)
 
 Module for ČSOB CZ payment gateway
 
 ## Instalation
 npm i csobcz_payment_gateway
+
+## Configuration
+### Using environment variables
+All keys are strings, for multiline env strings (certificates) check [dotenv#rules](https://www.npmjs.com/package/dotenv#rules).
+
+|variable name | description|
+|--------------|------------|
+|GATEWAY_URL | payment gateway address|
+|MERCHANT_PRIVATE_KEY | merchant private key|
+|MERCHANT_PUBLIC_KEY | merchant public key|
+|BANK_PUBLIC_KEY | bank public key |
+|CALLBACK_URL | url called by gateway after payment|
+|MERCHANT_ID | merchant id from gateway provider|
+
+Alternatively using config:
+```javascript
+const { CSOBPaymentModule } = require('csobcz_payment_gateway');
+
+const gateway = new CSOBPaymentModule({
+  gateUrl:   ...,
+  privateKey: ...,
+  merchantPublicKey: ...,
+  bankPublicKey: ...,
+  calbackUrl: ...,
+  merchantId: ...,
+  payloadTemplate: {}
+})
+```
+
+By setting ```payloadTemplate``` can by overwrited more ```init``` method payload (see [gateway config](https://github.com/csob/paymentgateway/wiki/eAPI-v1.7#-post-httpsapiplatebnibranacsobczapiv17paymentinit-)):
+
+```json
+{
+  "merchantId": "...",
+  "payOperation":"payment",
+  "payMethod":"card",
+  "currency":"CZK",
+  "language":"CZ",
+  "returnUrl": "...",
+  "returnMethod":"POST"
+}
+```
+* gateUrl: config.gateUrl || process.env.GATEWAY_URL,
+* privateKey: config.privateKey || process.env.MERCHANT_PRIVATE_KEY,
+* merchantPublicKey: config.merchantPublicKey || process.env.MERCHANT_PUBLIC_KEY,
+* bankPublicKey: config.bankPublicKey || process.env.BANK_PUBLIC_KEY,
+* calbackUrl: config.calbackUrl || process.env.CALLBACK_URL,
+* merchantId: config.merchantId || process.env.MERCHANT_ID
+    }
+
+    const PAYLOAD_TEMPLATE = {
+      "merchantId": configuration.merchantId,
+      "payOperation":"payment",
+      "payMethod":"card",
+      "currency":"CZK",
+      "language":"CZ",
+      "returnUrl": configuration.calbackUrl,
+      "returnMethod":"POST"
+    }
+
+    configuration.payloadTemplate = PAYLOAD_TEMPLATE;
 
 ## Available methods
 * ```status(string payId)``` - returns payment status

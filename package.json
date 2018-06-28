@@ -1,6 +1,6 @@
 {
   "name": "csobcz_payment_gateway",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "CSOB CZ payment gateway module",
   "main": "index.js",
   "scripts": {

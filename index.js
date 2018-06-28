@@ -4,323 +4,327 @@ const crypto = require('crypto');
 const rp = require('request-promise-native');
 const RSVP = require('rsvp');
 
-const GATE_URL = process.env.GATEWAY_URL;
-const PAYLOAD_TEMPLATE = {
-  "merchantId": process.env.MERCHANT_ID,
-  "payOperation":"payment",
-  "payMethod":"card",
-  "currency":"CZK",
-  "language":"CZ",
-  "returnUrl":process.env.CALLBACK_URL,
-  "returnMethod":"POST"
-}
+const CSOBPaymentModule = class CSOBPaymentModule {
+  constructor(config = {}) {
+    const configuration = {
+      gateUrl: config.gateUrl || process.env.GATEWAY_URL,
+      privateKey: config.privateKey || process.env.MERCHANT_PRIVATE_KEY,
+      merchantPublicKey: config.merchantPublicKey || process.env.MERCHANT_PUBLIC_KEY,
+      bankPublicKey: config.bankPublicKey || process.env.BANK_PUBLIC_KEY,
+      calbackUrl: config.calbackUrl || process.env.CALLBACK_URL,
+      merchantId: config.merchantId || process.env.MERCHANT_ID
+    }
 
-const privateKey = process.env.MERCHANT_PRIVATE_KEY;
-// const merchantPublicKey = process.env.MERCHANT_PUBLIC_KEY;
-const bankPublicKey = process.env.BANK_PUBLIC_KEY;
+    const PAYLOAD_TEMPLATE = {
+      "merchantId": configuration.merchantId,
+      "payOperation":"payment",
+      "payMethod":"card",
+      "currency":"CZK",
+      "language":"CZ",
+      "returnUrl": configuration.calbackUrl,
+      "returnMethod":"POST"
+    }
 
-function _prefixNumber(number) {
-  return number < 10 ? '0'+number : number;
-}
-
-function _createDttm() {
-  const date = new Date();
-  return `${date.getFullYear()}${_prefixNumber(date.getMonth())}${_prefixNumber(date.getDay())}`+
-  `${_prefixNumber(date.getHours())}${_prefixNumber(date.getMinutes())}${_prefixNumber(date.getSeconds())}`;
-}
-
-function _sign(text) {
-  return crypto.createSign('sha1').update(text).sign(privateKey,"base64");
-}
-
-function _verify(text, signature) {
-  return crypto.createVerify('sha1').update(text).verify(bankPublicKey, signature,"base64");
-}
-
-function _createMessageArray(data, keys) {
-  if (!keys) {
-    keys = Object.keys(data);
+    configuration.payloadTemplate = PAYLOAD_TEMPLATE;
+    this.config = configuration;
   }
-  return keys.map(key => data[key]).filter(item => typeof(item) !=='undefined');
-}
 
-function _createMessageString(data, keys) {
-  return _createMessageArray(data, keys).join('|');
-}
+  _prefixNumber(number) {
+    return number < 10 ? '0'+number : number;
+  }
 
-function _createPayloadMessage(payload) {
+  _createDttm() {
+    const date = new Date();
+    return `${date.getFullYear()}${this._prefixNumber(date.getMonth())}`+
+    `${this._prefixNumber(date.getDay())}${this._prefixNumber(date.getHours())}`+
+    `${this._prefixNumber(date.getMinutes())}${this._prefixNumber(date.getSeconds())}`;
+  }
 
-  const payloadKeys = [
-    'merchantId', 'orderNo', 'dttm', 'payOperation', 'payMethod',
-    'totalAmount', 'currency', 'closePayment', 'returnUrl', 'returnMethod'
-  ];
-  const cartItemKeys = ['name', 'quantity', 'amount', 'description']
-  let payloadMessageArray = _createMessageArray(payload, payloadKeys);
-  payload.cart.forEach(cartItem => {
-    payloadMessageArray = payloadMessageArray.concat(_createMessageArray(cartItem, cartItemKeys));
-  });
-  payloadMessageArray = payloadMessageArray.concat(_createMessageArray(payload, ['description', 'language']));
-  return payloadMessageArray.join('|');
-}
+  _sign(text) {
+    return crypto.createSign('sha1').update(text).sign(this.config.privateKey, "base64");
+  }
 
-function _createResultMessage(result) {
-  const RESULT_KEYS = [
-    'payId', 'dttm', 'resultCode', 'resultMessage', 'paymentStatus', 'authCode'
-  ];
-  return _createMessageString(result, RESULT_KEYS);
-}
+  _verify(text, signature) {
+    return crypto.createVerify('sha1').update(text).verify(this.config.bankPublicKey, signature, "base64");
+  }
 
-
-// init - 1. krok - inicializace platby
-function init(payload) {
-  return new RSVP.Promise((resolve, reject) => {
-    payload["signature"] = _sign(_createPayloadMessage(payload))
-    rp({
-      url: `${GATE_URL}/payment/init`,
-      method: "POST",
-      json: true,
-      body: payload
-    }).then(result => {
-      if (_verify(_createResultMessage(result), result.signature)) {
-        if (result.resultCode.toString() === '0') {
-          resolve(result)
-        } else {
-          reject(result);
-        }
-      } else {
-        reject(Error('Init - Verification failed'));
-      }
-    }).catch(error => {
-      reject(error);
-    });
-  })
-};
-
-// process - 2.krok - redirect url
-function getRedirectUrl(id) {
-  const dttm = _createDttm();
-  const signature = _sign(_createMessageString({
-    merchantId: process.env.MERCHANT_ID,
-    payId: id,
-    dttm
-  }))
-  return `${GATE_URL}/payment/process/${process.env.MERCHANT_ID}/${id}/${dttm}/${encodeURIComponent(signature)}`;
-}
-
-// status
-function status(id) {
-  return new RSVP.Promise((resolve, reject) => {
-    const dttm = _createDttm();
-    const signature = _sign(_createMessageString({
-      merchantId: process.env.MERCHANT_ID,
-      payId: id,
-      dttm
-    }))
-    rp({
-      url: `${GATE_URL}/payment/status/${process.env.MERCHANT_ID}/${id}/${dttm}/${encodeURIComponent(signature)}`,
-      method: "GET",
-      json: true
-    }).then(result => {
-      const message = _createResultMessage(result);
-
-      if (_verify(message, result.signature)) {
-        if (result.resultCode.toString() === '0') {
-          resolve(result)
-        } else {
-          reject(result);
-        }
-      } else {
-        reject(Error('Status - Verification failed'));
-      }
-    }).catch(error => {
-      reject(error);
-    });
-  })
-}
-
-// reverse
-function reverse(id) {
-  return new RSVP.Promise((resolve, reject) => {
-    const payload = {
-      merchantId: process.env.MERCHANT_ID,
-      payId: id,
-      dttm: _createDttm(),
+  _createMessageArray(data, keys) {
+    if (!keys) {
+      keys = Object.keys(data);
     }
+    return keys.map(key => data[key]).filter(item => typeof(item) !=='undefined');
+  }
 
-    payload["signature"] = _sign(_createMessageString(payload))
-    rp({
-      url: `${GATE_URL}/payment/reverse`,
-      method: "PUT",
-      json: true,
-      body: payload
-    }).then(result => {
-      if (_verify(_createResultMessage(result), result.signature)) {
-        if (result.resultCode.toString() === '0') {
-          resolve(result)
-        } else {
-          reject(result);
-        }
-      } else {
-        reject(Error('Reverse - Verification failed'));
-      }
-    }).catch(error => {
-      reject(error);
+  _createMessageString(data, keys) {
+    return this._createMessageArray(data, keys).join('|');
+  }
+
+  _createPayloadMessage(payload) {
+
+    const payloadKeys = [
+      'merchantId', 'orderNo', 'dttm', 'payOperation', 'payMethod',
+      'totalAmount', 'currency', 'closePayment', 'returnUrl', 'returnMethod'
+    ];
+    const cartItemKeys = ['name', 'quantity', 'amount', 'description']
+    let payloadMessageArray = this._createMessageArray(payload, payloadKeys);
+    payload.cart.forEach(cartItem => {
+      payloadMessageArray = payloadMessageArray.concat(this._createMessageArray(cartItem, cartItemKeys));
     });
-  })
-};
+    payloadMessageArray = payloadMessageArray.concat(this._createMessageArray(payload, ['description', 'language']));
+    return payloadMessageArray.join('|');
+  }
 
-//close
-function close(id, amount) {
-  return new RSVP.Promise((resolve, reject) => {
-    const payload = {
-      merchantId: process.env.MERCHANT_ID,
-      payId: id,
-      dttm: _createDttm(),
-      amount
-    }
+  _createResultMessage(result) {
+    const RESULT_KEYS = [
+      'payId', 'dttm', 'resultCode', 'resultMessage', 'paymentStatus', 'authCode'
+    ];
+    return this._createMessageString(result, RESULT_KEYS);
+  }
 
-    payload["signature"] = _sign(_createMessageString(payload))
-    rp({
-      url: `${GATE_URL}/payment/close`,
-      method: "PUT",
-      json: true,
-      body: payload
-    }).then(result => {
-      if (_verify(_createResultMessage(result), result.signature)) {
-        if (result.resultCode.toString() === '0') {
-          resolve(result)
-        } else {
-          reject(result);
-        }
-      } else {
-        reject(Error('Close - Verification failed'));
-      }
-    }).catch(error => {
-      reject(error);
-    });
-  })
-};
 
-//refund
-function refund(id, amount) {
-  return new RSVP.Promise((resolve, reject) => {
-    const payload = {
-      merchantId: process.env.MERCHANT_ID,
-      payId: id,
-      dttm: _createDttm(),
-      amount
-    }
-
-    payload["signature"] = _sign(_createMessageString(payload))
-    rp({
-      url: `${GATE_URL}/payment/refund`,
-      method: "PUT",
-      json: true,
-      body: payload
-    }).then(result => {
-      if (_verify(_createResultMessage(result), result.signature)) {
-        if (result.resultCode.toString() === '0') {
-          resolve(result)
-        } else {
-          reject(result);
-        }
-      } else {
-        reject(Error('Refund - Verification failed'));
-      }
-    }).catch(error => {
-      reject(error);
-    });
-  })
-};
-
-//refund
-function echo(method = 'POST') {
-  return new RSVP.Promise((resolve, reject) => {
-    const payload = {
-      merchantId: process.env.MERCHANT_ID,
-      dttm: _createDttm()
-    }
-
-    payload["signature"] = _sign(_createMessageString(payload));
-
-    if (method === 'POST') {
+  // init - 1. krok - inicializace platby
+  init(payload) {
+    return new RSVP.Promise((resolve, reject) => {
+      payload["signature"] = this._sign(this._createPayloadMessage(payload))
       rp({
-        url: `${GATE_URL}/echo`,
-        method: 'POST',
+        url: `${this.config.gateUrl}/payment/init`,
+        method: "POST",
         json: true,
         body: payload
       }).then(result => {
-        if (_verify(_createResultMessage(result), result.signature)) {
+        if (this._verify(this._createResultMessage(result), result.signature)) {
           if (result.resultCode.toString() === '0') {
             resolve(result)
           } else {
             reject(result);
           }
         } else {
-          reject(Error('Echo - Verification failed'));
+          reject(Error('Init - Verification failed'));
         }
       }).catch(error => {
         reject(error);
       });
-    } else {
+    })
+  };
+
+  // process - 2.krok - redirect url
+  getRedirectUrl(id) {
+    const dttm = this._createDttm();
+    const signature = this._sign(this._createMessageString({
+      merchantId: this.config.merchantId,
+      payId: id,
+      dttm
+    }))
+    return `${this.config.gateUrl}/payment/process/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`;
+  }
+
+  // status
+  status(id) {
+    return new RSVP.Promise((resolve, reject) => {
+      const dttm = this._createDttm();
+      const signature = this._sign(this._createMessageString({
+        merchantId: this.config.merchantId,
+        payId: id,
+        dttm
+      }))
       rp({
-        url: `${GATE_URL}/echo/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`,
-        method: 'GET',
+        url: `${this.config.gateUrl}/payment/status/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`,
+        method: "GET",
         json: true
       }).then(result => {
-        if (_verify(_createResultMessage(result), result.signature)) {
+        const message = this._createResultMessage(result);
+
+        if (this._verify(message, result.signature)) {
           if (result.resultCode.toString() === '0') {
             resolve(result)
           } else {
             reject(result);
           }
         } else {
-          reject(Error('Echo - Verification failed'));
+          reject(Error('Status - Verification failed'));
         }
       }).catch(error => {
         reject(error);
       });
-    }
-  })
-};
+    })
+  }
 
-
-
-
-function payOrder(order, close = true) {
-  const payload = Object.assign({}, PAYLOAD_TEMPLATE);
-  payload['orderNo'] = order.id
-  payload['dttm'] = _createDttm();
-  payload['description'] = order.description;
-  payload['cart'] = order.items;
-  payload['totalAmount'] = order.items.reduce((sum, item) => sum + item.amount, 0);
-  payload['closePayment'] = close;
-
-  return init(payload).then(result => {
-    return getRedirectUrl(result.payId);
-  });
-}
-
-function verifyResult(result) {
-  return new RSVP.Promise((resolve, reject) => {
-    if (result.resultCode.toString() === '0') {
-      if (_verify(_createResultMessage(result), result.signature)) {
-        resolve(result);
-      } else {
-        reject(Error('Verification failed'));
+  // reverse
+  reverse(id) {
+    return new RSVP.Promise((resolve, reject) => {
+      const payload = {
+        merchantId: this.config.merchantId,
+        payId: id,
+        dttm: this._createDttm(),
       }
-    } else {
-      reject(result);
-    }
-  });
+
+      payload["signature"] = this._sign(this._createMessageString(payload))
+      rp({
+        url: `${this.config.gateUrl}/payment/reverse`,
+        method: "PUT",
+        json: true,
+        body: payload
+      }).then(result => {
+        if (this._verify(this._createResultMessage(result), result.signature)) {
+          if (result.resultCode.toString() === '0') {
+            resolve(result)
+          } else {
+            reject(result);
+          }
+        } else {
+          reject(Error('Reverse - Verification failed'));
+        }
+      }).catch(error => {
+        reject(error);
+      });
+    })
+  };
+
+  //close
+  close(id, amount) {
+    return new RSVP.Promise((resolve, reject) => {
+      const payload = {
+        merchantId: this.config.merchantId,
+        payId: id,
+        dttm: this._createDttm(),
+        amount
+      }
+
+      payload["signature"] = this._sign(this._createMessageString(payload))
+      rp({
+        url: `${this.config.gateUrl}/payment/close`,
+        method: "PUT",
+        json: true,
+        body: payload
+      }).then(result => {
+        if (this._verify(this._createResultMessage(result), result.signature)) {
+          if (result.resultCode.toString() === '0') {
+            resolve(result)
+          } else {
+            reject(result);
+          }
+        } else {
+          reject(Error('Close - Verification failed'));
+        }
+      }).catch(error => {
+        reject(error);
+      });
+    })
+  };
+
+  //refund
+  refund(id, amount) {
+    return new RSVP.Promise((resolve, reject) => {
+      const payload = {
+        merchantId: this.config.merchantId,
+        payId: id,
+        dttm: this._createDttm(),
+        amount
+      }
+
+      payload["signature"] = this._sign(this._createMessageString(payload))
+      rp({
+        url: `${this.config.gateUrl}/payment/refund`,
+        method: "PUT",
+        json: true,
+        body: payload
+      }).then(result => {
+        if (this._verify(this._createResultMessage(result), result.signature)) {
+          if (result.resultCode.toString() === '0') {
+            resolve(result)
+          } else {
+            reject(result);
+          }
+        } else {
+          reject(Error('Refund - Verification failed'));
+        }
+      }).catch(error => {
+        reject(error);
+      });
+    })
+  };
+
+  //refund
+  echo(method = 'POST') {
+    return new RSVP.Promise((resolve, reject) => {
+      const payload = {
+        merchantId: this.config.merchantId,
+        dttm: this._createDttm()
+      }
+
+      payload["signature"] = this._sign(this._createMessageString(payload));
+
+      if (method === 'POST') {
+        rp({
+          url: `${this.config.gateUrl}/echo`,
+          method: 'POST',
+          json: true,
+          body: payload
+        }).then(result => {
+          if (this._verify(this._createResultMessage(result), result.signature)) {
+            if (result.resultCode.toString() === '0') {
+              resolve(result)
+            } else {
+              reject(result);
+            }
+          } else {
+            reject(Error('Echo - Verification failed'));
+          }
+        }).catch(error => {
+          reject(error);
+        });
+      } else {
+        rp({
+          url: `${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`,
+          method: 'GET',
+          json: true
+        }).then(result => {
+          if (this._verify(this._createResultMessage(result), result.signature)) {
+            if (result.resultCode.toString() === '0') {
+              resolve(result)
+            } else {
+              reject(result);
+            }
+          } else {
+            reject(Error('Echo - Verification failed'));
+          }
+        }).catch(error => {
+          reject(error);
+        });
+      }
+    })
+  };
+
+
+
+
+  payOrder(order, close = true) {
+    const payload = Object.assign({}, this.config.payloadTemplate);
+    payload['orderNo'] = order.id
+    payload['dttm'] = this._createDttm();
+    payload['description'] = order.description;
+    payload['cart'] = order.items;
+    payload['totalAmount'] = order.items.reduce((sum, item) => sum + item.amount, 0);
+    payload['closePayment'] = close;
+
+    return this.init(payload).then(result => {
+      return this.getRedirectUrl(result.payId);
+    });
+  }
+
+  verifyResult(result) {
+    return new RSVP.Promise((resolve, reject) => {
+      if (result.resultCode.toString() === '0') {
+        if (this._verify(this._createResultMessage(result), result.signature)) {
+          resolve(result);
+        } else {
+          reject(Error('Verification failed'));
+        }
+      } else {
+        reject(result);
+      }
+    });
+  }
 }
 
-exports.payOrder = payOrder;
-exports.verifyResult = verifyResult;
-exports.status = status;
-exports.init = init;
-exports.getRedirectUrl = getRedirectUrl;
-exports.reverse = reverse;
-exports.close = close;
-exports.refund = refund;
-exports.echo = echo;
+module.exports.CSOBPaymentModule = CSOBPaymentModule;

@@ -26,6 +26,7 @@ Alternatively using config:
 const { CSOBPaymentModule } = require('csobcz_payment_gateway');
 
 const gateway = new CSOBPaymentModule({
+  logging: ...,
   gateUrl:   ...,
   privateKey: ...,
   merchantPublicKey: ...,
@@ -36,7 +37,7 @@ const gateway = new CSOBPaymentModule({
 })
 ```
 
-By setting ```payloadTemplate``` can by overwrited more ```init``` method payload (see [gateway config](https://github.com/csob/paymentgateway/wiki/eAPI-v1.7#-post-httpsapiplatebnibranacsobczapiv17paymentinit-)):
+Attribute ```logging``` should be ```boolean``` or ```function``` used for debug info. By setting ```payloadTemplate``` can by overwrited more ```init``` method payload (see [gateway config](https://github.com/csob/paymentgateway/wiki/eAPI-v1.7#-post-httpsapiplatebnibranacsobczapiv17paymentinit-)):
 
 ```json
 {
@@ -63,7 +64,7 @@ payload is json returned from gateway callback.
 -------------------
 
 ### Extra methods
-* ```payOrder(json order, close)``` - wrapper for init and getRedirectUrl, ```close``` params is ```closePayment``` value
+* ```payOrder(json order, boolean close, json options)``` - wrapper for init and getRedirectUrl, ```close``` params is ```closePayment``` value, ```options``` are merged into request payload
 order example
 ```json
 {

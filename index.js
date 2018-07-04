@@ -6,6 +6,11 @@ const RSVP = require('rsvp');
 
 const CSOBPaymentModule = class CSOBPaymentModule {
   constructor(config = {}) {
+    this.logger = config.logging ?
+      typeof(config.logging) === 'function' ?
+        config.logging : console.log
+      : function() {};
+
     const configuration = {
       gateUrl: config.gateUrl || process.env.GATEWAY_URL,
       privateKey: config.privateKey || process.env.MERCHANT_PRIVATE_KEY,
@@ -70,13 +75,15 @@ const CSOBPaymentModule = class CSOBPaymentModule {
     payload.cart.forEach(cartItem => {
       payloadMessageArray = payloadMessageArray.concat(this._createMessageArray(cartItem, cartItemKeys));
     });
-    payloadMessageArray = payloadMessageArray.concat(this._createMessageArray(payload, ['description', 'language']));
+    payloadMessageArray = payloadMessageArray.concat(this._createMessageArray(payload, [
+      'description', 'merchantData', 'customerId', 'language', 'ttlSec', 'logoVersion', 'colorSchemeVersion'
+    ]));
     return payloadMessageArray.join('|');
   }
 
   _createResultMessage(result) {
     const RESULT_KEYS = [
-      'payId', 'dttm', 'resultCode', 'resultMessage', 'paymentStatus', 'authCode'
+      'payId', 'dttm', 'resultCode', 'resultMessage', 'paymentStatus', 'authCode', 'merchantData'
     ];
     return this._createMessageString(result, RESULT_KEYS);
   }
@@ -86,6 +93,7 @@ const CSOBPaymentModule = class CSOBPaymentModule {
   init(payload) {
     return new RSVP.Promise((resolve, reject) => {
       payload["signature"] = this._sign(this._createPayloadMessage(payload))
+      this.logger('init', payload);
       rp({
         url: `${this.config.gateUrl}/payment/init`,
         method: "POST",
@@ -115,7 +123,9 @@ const CSOBPaymentModule = class CSOBPaymentModule {
       payId: id,
       dttm
     }))
-    return `${this.config.gateUrl}/payment/process/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`;
+    const url = `${this.config.gateUrl}/payment/process/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`;
+    this.logger('redirectUrl', url);
+    return url;
   }
 
   // status
@@ -127,8 +137,11 @@ const CSOBPaymentModule = class CSOBPaymentModule {
         payId: id,
         dttm
       }))
+
+      const url = `${this.config.gateUrl}/payment/status/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`;
+      this.logger('status', url);
       rp({
-        url: `${this.config.gateUrl}/payment/status/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`,
+        url,
         method: "GET",
         json: true
       }).then(result => {
@@ -159,6 +172,7 @@ const CSOBPaymentModule = class CSOBPaymentModule {
       }
 
       payload["signature"] = this._sign(this._createMessageString(payload))
+      this.logger('reverse', payload);
       rp({
         url: `${this.config.gateUrl}/payment/reverse`,
         method: "PUT",
@@ -191,6 +205,7 @@ const CSOBPaymentModule = class CSOBPaymentModule {
       }
 
       payload["signature"] = this._sign(this._createMessageString(payload))
+      this.logger('close', payload);
       rp({
         url: `${this.config.gateUrl}/payment/close`,
         method: "PUT",
@@ -223,6 +238,7 @@ const CSOBPaymentModule = class CSOBPaymentModule {
       }
 
       payload["signature"] = this._sign(this._createMessageString(payload))
+      this.logger('refund', payload);
       rp({
         url: `${this.config.gateUrl}/payment/refund`,
         method: "PUT",
@@ -253,7 +269,7 @@ const CSOBPaymentModule = class CSOBPaymentModule {
       }
 
       payload["signature"] = this._sign(this._createMessageString(payload));
-
+      this.logger('echo', payload);
       if (method === 'POST') {
         rp({
           url: `${this.config.gateUrl}/echo`,
@@ -298,16 +314,20 @@ const CSOBPaymentModule = class CSOBPaymentModule {
 
 
 
-  payOrder(order, close = true) {
-    const payload = Object.assign({}, this.config.payloadTemplate);
+  payOrder(order, close = true, options = {}) {
+    const payload = Object.assign(options, this.config.payloadTemplate);
     payload['orderNo'] = order.id
     payload['dttm'] = this._createDttm();
     payload['description'] = order.description;
     payload['cart'] = order.items;
     payload['totalAmount'] = order.items.reduce((sum, item) => sum + item.amount, 0);
     payload['closePayment'] = close;
-
+    if (order.merchantData) {
+      payload['merchantData'] = Buffer.from(order.merchantData).toString('base64');
+    }
+    this.logger('payOrder', payload);
     return this.init(payload).then(result => {
+      this.logger('payOrder - result', result);
       return this.getRedirectUrl(result.payId);
     });
   }
@@ -316,6 +336,8 @@ const CSOBPaymentModule = class CSOBPaymentModule {
     return new RSVP.Promise((resolve, reject) => {
       if (result.resultCode.toString() === '0') {
         if (this._verify(this._createResultMessage(result), result.signature)) {
+          this.logger('verifyResult', result);
+          result['merchantData'] = Buffer.from(result.merchantData, 'base64').toString('ascii');
           resolve(result);
         } else {
           reject(Error('Verification failed'));

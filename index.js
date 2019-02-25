@@ -1,7 +1,7 @@
 /* global process */
 
 import * as crypto from 'crypto'
-import { Config } from './types/Config'
+import { Config } from './src/types/Config'
 import * as request from 'superagent'
 
 export class CSOBPaymentModule {

@@ -24,13 +24,13 @@ export class CSOBPaymentModule {
     }
 
     this.config.payloadTemplate = {
-      "merchantId": this.config.merchantId,
-      "payOperation": "payment",
-      "payMethod": "card",
-      "currency": "CZK",
-      "language": "CZ",
-      "returnUrl": this.config.calbackUrl,
-      "returnMethod": "POST"
+      'merchantId': this.config.merchantId,
+      'payOperation': 'payment',
+      'payMethod': 'card',
+      'currency': 'CZK',
+      'language': 'CZ',
+      'returnUrl': this.config.calbackUrl,
+      'returnMethod': 'POST'
     }
   }
 
@@ -60,7 +60,7 @@ export class CSOBPaymentModule {
     return keys.map(key => data[key]).filter(item => typeof (item) !== 'undefined')
   }
 
-  _createMessageString(data, keys) {
+  _createMessageString(data, keys = []) {
     return this._createMessageArray(data, keys).join('|')
   }
 
@@ -82,20 +82,20 @@ export class CSOBPaymentModule {
   }
 
   _createResultMessage(result) {
-    const RESULT_KEYS = [
+    const resultKeys = [
       'payId', 'dttm', 'resultCode', 'resultMessage', 'paymentStatus', 'authCode', 'merchantData'
     ]
-    return this._createMessageString(result, RESULT_KEYS)
+    return this._createMessageString(result, resultKeys)
   }
 
 
   // init - 1. krok - inicializace platby
   async init(payload) {
-    payload["signature"] = this._sign(this._createPayloadMessage(payload))
+    payload['signature'] = this._sign(this._createPayloadMessage(payload))
     this.logger('init', payload)
     const result = await request({
       url: `${this.config.gateUrl}/payment/init`,
-      method: "POST",
+      method: 'POST',
       json: true,
       body: payload
     })
@@ -136,7 +136,7 @@ export class CSOBPaymentModule {
     this.logger('status', url)
     const result = request({
       url,
-      method: "GET",
+      method: 'GET',
       json: true
     })
     const message = this._createResultMessage(result)
@@ -160,11 +160,11 @@ export class CSOBPaymentModule {
       dttm: this._createDttm()
     }
 
-    payload["signature"] = this._sign(this._createMessageString(payload))
+    payload['signature'] = this._sign(this._createMessageString(payload))
     this.logger('reverse', payload)
     const result = request({
       url: `${this.config.gateUrl}/payment/reverse`,
-      method: "PUT",
+      method: 'PUT',
       json: true,
       body: payload
     })
@@ -188,11 +188,11 @@ export class CSOBPaymentModule {
       amount
     }
 
-    payload["signature"] = this._sign(this._createMessageString(payload))
+    payload['signature'] = this._sign(this._createMessageString(payload))
     this.logger('close', payload)
     const result = request({
       url: `${this.config.gateUrl}/payment/close`,
-      method: "PUT",
+      method: 'PUT',
       json: true,
       body: payload
     })
@@ -217,11 +217,11 @@ export class CSOBPaymentModule {
       amount
     }
 
-    payload["signature"] = this._sign(this._createMessageString(payload))
+    payload['signature'] = this._sign(this._createMessageString(payload))
     this.logger('refund', payload)
     const result = request({
       url: `${this.config.gateUrl}/payment/refund`,
-      method: "PUT",
+      method: 'PUT',
       json: true,
       body: payload
     })
@@ -244,7 +244,7 @@ export class CSOBPaymentModule {
       dttm: this._createDttm()
     }
 
-    payload["signature"] = this._sign(this._createMessageString(payload))
+    payload['signature'] = this._sign(this._createMessageString(payload))
     this.logger('echo', payload)
     if (method === 'POST') {
       const result = await request({

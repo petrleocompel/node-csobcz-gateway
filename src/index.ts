@@ -1,18 +1,20 @@
 /* global process */
 
-const crypto = require('crypto')
-const rp = require('request-promise-native')
-const RSVP = require('rsvp')
+import * as crypto from 'crypto'
+import { Config } from './types/Config'
+import * as request from 'superagent'
 
-const CSOBPaymentModule = class CSOBPaymentModule {
+export class CSOBPaymentModule {
+  private logger: any
+  private config: Config
+
   constructor(config: Config = {}) {
     this.logger = config.logging ?
       typeof (config.logging) === 'function' ?
-        config.logging : console.log
-      : function () {
+        config.logging : console.log : () => {
       }
 
-    const configuration = {
+    this.config = {
       gateUrl: config.gateUrl || process.env.GATEWAY_URL,
       privateKey: config.privateKey || process.env.MERCHANT_PRIVATE_KEY,
       merchantPublicKey: config.merchantPublicKey || process.env.MERCHANT_PUBLIC_KEY,
@@ -21,18 +23,15 @@ const CSOBPaymentModule = class CSOBPaymentModule {
       merchantId: config.merchantId || process.env.MERCHANT_ID
     }
 
-    const PAYLOAD_TEMPLATE = {
-      "merchantId": configuration.merchantId,
+    this.config.payloadTemplate = {
+      "merchantId": this.config.merchantId,
       "payOperation": "payment",
       "payMethod": "card",
       "currency": "CZK",
       "language": "CZ",
-      "returnUrl": configuration.calbackUrl,
+      "returnUrl": this.config.calbackUrl,
       "returnMethod": "POST"
     }
-
-    configuration.payloadTemplate = PAYLOAD_TEMPLATE
-    this.config = configuration
   }
 
   _prefixNumber(number) {
@@ -47,11 +46,11 @@ const CSOBPaymentModule = class CSOBPaymentModule {
   }
 
   _sign(text) {
-    return crypto.createSign('sha1').update(text).sign(this.config.privateKey, "base64")
+    return crypto.createSign('sha1').update(text).sign(this.config.privateKey, 'base64')
   }
 
   _verify(text, signature) {
-    return crypto.createVerify('sha1').update(text).verify(this.config.bankPublicKey, signature, "base64")
+    return crypto.createVerify('sha1').update(text).verify(this.config.bankPublicKey, signature, 'base64')
   }
 
   _createMessageArray(data, keys) {
@@ -91,30 +90,25 @@ const CSOBPaymentModule = class CSOBPaymentModule {
 
 
   // init - 1. krok - inicializace platby
-  init(payload) {
-    return new RSVP.Promise((resolve, reject) => {
-      payload["signature"] = this._sign(this._createPayloadMessage(payload))
-      this.logger('init', payload)
-      rp({
-        url: `${this.config.gateUrl}/payment/init`,
-        method: "POST",
-        json: true,
-        body: payload
-      }).then(result => {
-        if (this._verify(this._createResultMessage(result), result.signature)) {
-          if (result.resultCode.toString() === '0') {
-            resolve(result)
-          } else {
-            reject(result)
-          }
-        } else {
-          reject(Error('Init - Verification failed'))
-        }
-      }).catch(error => {
-        reject(error)
-      })
+  async init(payload) {
+    payload["signature"] = this._sign(this._createPayloadMessage(payload))
+    this.logger('init', payload)
+    const result = await request({
+      url: `${this.config.gateUrl}/payment/init`,
+      method: "POST",
+      json: true,
+      body: payload
     })
-  };
+    if (this._verify(this._createResultMessage(result), result.signature)) {
+      if (result.resultCode.toString() === '0') {
+        return result
+      } else {
+        throw result
+      }
+    }
+    throw new Error('Init - Verification failed')
+
+  }
 
   // process - 2.krok - redirect url
   getRedirectUrl(id) {
@@ -130,187 +124,159 @@ const CSOBPaymentModule = class CSOBPaymentModule {
   }
 
   // status
-  status(id) {
-    return new RSVP.Promise((resolve, reject) => {
-      const dttm = this._createDttm()
-      const signature = this._sign(this._createMessageString({
-        merchantId: this.config.merchantId,
-        payId: id,
-        dttm
-      }))
+  async status(id) {
+    const dttm = this._createDttm()
+    const signature = this._sign(this._createMessageString({
+      merchantId: this.config.merchantId,
+      payId: id,
+      dttm
+    }))
 
-      const url = `${this.config.gateUrl}/payment/status/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`
-      this.logger('status', url)
-      rp({
-        url,
-        method: "GET",
-        json: true
-      }).then(result => {
-        const message = this._createResultMessage(result)
-
-        if (this._verify(message, result.signature)) {
-          if (result.resultCode.toString() === '0') {
-            resolve(result)
-          } else {
-            reject(result)
-          }
-        } else {
-          reject(Error('Status - Verification failed'))
-        }
-      }).catch(error => {
-        reject(error)
-      })
+    const url = `${this.config.gateUrl}/payment/status/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`
+    this.logger('status', url)
+    const result = request({
+      url,
+      method: "GET",
+      json: true
     })
+    const message = this._createResultMessage(result)
+
+    if (this._verify(message, result.signature)) {
+      if (result.resultCode.toString() === '0') {
+        return result
+      } else {
+        throw result
+      }
+    }
+    throw new Error('Status - Verification failed')
+
   }
 
   // reverse
-  reverse(id) {
-    return new RSVP.Promise((resolve, reject) => {
-      const payload = {
-        merchantId: this.config.merchantId,
-        payId: id,
-        dttm: this._createDttm()
-      }
+  async reverse(id) {
+    const payload = {
+      merchantId: this.config.merchantId,
+      payId: id,
+      dttm: this._createDttm()
+    }
 
-      payload["signature"] = this._sign(this._createMessageString(payload))
-      this.logger('reverse', payload)
-      rp({
-        url: `${this.config.gateUrl}/payment/reverse`,
-        method: "PUT",
-        json: true,
-        body: payload
-      }).then(result => {
-        if (this._verify(this._createResultMessage(result), result.signature)) {
-          if (result.resultCode.toString() === '0') {
-            resolve(result)
-          } else {
-            reject(result)
-          }
-        } else {
-          reject(Error('Reverse - Verification failed'))
-        }
-      }).catch(error => {
-        reject(error)
-      })
+    payload["signature"] = this._sign(this._createMessageString(payload))
+    this.logger('reverse', payload)
+    const result = request({
+      url: `${this.config.gateUrl}/payment/reverse`,
+      method: "PUT",
+      json: true,
+      body: payload
     })
-  };
-
-  //close
-  close(id, amount) {
-    return new RSVP.Promise((resolve, reject) => {
-      const payload = {
-        merchantId: this.config.merchantId,
-        payId: id,
-        dttm: this._createDttm(),
-        amount
-      }
-
-      payload["signature"] = this._sign(this._createMessageString(payload))
-      this.logger('close', payload)
-      rp({
-        url: `${this.config.gateUrl}/payment/close`,
-        method: "PUT",
-        json: true,
-        body: payload
-      }).then(result => {
-        if (this._verify(this._createResultMessage(result), result.signature)) {
-          if (result.resultCode.toString() === '0') {
-            resolve(result)
-          } else {
-            reject(result)
-          }
-        } else {
-          reject(Error('Close - Verification failed'))
-        }
-      }).catch(error => {
-        reject(error)
-      })
-    })
-  };
-
-  //refund
-  refund(id, amount) {
-    return new RSVP.Promise((resolve, reject) => {
-      const payload = {
-        merchantId: this.config.merchantId,
-        payId: id,
-        dttm: this._createDttm(),
-        amount
-      }
-
-      payload["signature"] = this._sign(this._createMessageString(payload))
-      this.logger('refund', payload)
-      rp({
-        url: `${this.config.gateUrl}/payment/refund`,
-        method: "PUT",
-        json: true,
-        body: payload
-      }).then(result => {
-        if (this._verify(this._createResultMessage(result), result.signature)) {
-          if (result.resultCode.toString() === '0') {
-            resolve(result)
-          } else {
-            reject(result)
-          }
-        } else {
-          reject(Error('Refund - Verification failed'))
-        }
-      }).catch(error => {
-        reject(error)
-      })
-    })
-  };
-
-  //refund
-  echo(method = 'POST') {
-    return new RSVP.Promise((resolve, reject) => {
-      const payload = {
-        merchantId: this.config.merchantId,
-        dttm: this._createDttm()
-      }
-
-      payload["signature"] = this._sign(this._createMessageString(payload))
-      this.logger('echo', payload)
-      if (method === 'POST') {
-        rp({
-          url: `${this.config.gateUrl}/echo`,
-          method: 'POST',
-          json: true,
-          body: payload
-        }).then(result => {
-          if (this._verify(this._createResultMessage(result), result.signature)) {
-            if (result.resultCode.toString() === '0') {
-              resolve(result)
-            } else {
-              reject(result)
-            }
-          } else {
-            reject(Error('Echo - Verification failed'))
-          }
-        }).catch(error => {
-          reject(error)
-        })
+    if (this._verify(this._createResultMessage(result), result.signature)) {
+      if (result.resultCode.toString() === '0') {
+        return result
       } else {
-        rp({
-          url: `${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`,
-          method: 'GET',
-          json: true
-        }).then(result => {
-          if (this._verify(this._createResultMessage(result), result.signature)) {
-            if (result.resultCode.toString() === '0') {
-              resolve(result)
-            } else {
-              reject(result)
-            }
-          } else {
-            reject(Error('Echo - Verification failed'))
-          }
-        }).catch(error => {
-          reject(error)
-        })
+        throw result
       }
+    }
+    throw new Error('Reverse - Verification failed')
+
+  }
+
+//close
+  close(id, amount) {
+    const payload = {
+      merchantId: this.config.merchantId,
+      payId: id,
+      dttm: this._createDttm(),
+      amount
+    }
+
+    payload["signature"] = this._sign(this._createMessageString(payload))
+    this.logger('close', payload)
+    const result = request({
+      url: `${this.config.gateUrl}/payment/close`,
+      method: "PUT",
+      json: true,
+      body: payload
     })
-  };
+    if (this._verify(this._createResultMessage(result), result.signature)) {
+      if (result.resultCode.toString() === '0') {
+        return result
+      } else {
+        throw result
+      }
+    }
+    throw new Error('Close - Verification failed')
+
+
+  }
+
+//refund
+  async refund(id, amount) {
+    const payload = {
+      merchantId: this.config.merchantId,
+      payId: id,
+      dttm: this._createDttm(),
+      amount
+    }
+
+    payload["signature"] = this._sign(this._createMessageString(payload))
+    this.logger('refund', payload)
+    const result = request({
+      url: `${this.config.gateUrl}/payment/refund`,
+      method: "PUT",
+      json: true,
+      body: payload
+    })
+    if (this._verify(this._createResultMessage(result), result.signature)) {
+      if (result.resultCode.toString() === '0') {
+        return result
+      } else {
+        throw result
+      }
+    }
+    throw new Error('Refund - Verification failed')
+
+
+  }
+
+//refund
+  async echo(method = 'POST') {
+    const payload = {
+      merchantId: this.config.merchantId,
+      dttm: this._createDttm()
+    }
+
+    payload["signature"] = this._sign(this._createMessageString(payload))
+    this.logger('echo', payload)
+    if (method === 'POST') {
+      const result = await request({
+        url: `${this.config.gateUrl}/echo`,
+        method: 'POST',
+        json: true,
+        body: payload
+      })
+      if (this._verify(this._createResultMessage(result), result.signature)) {
+        if (result.resultCode.toString() === '0') {
+          return result
+        } else {
+          throw result
+        }
+      }
+    } else {
+      const result = await request({
+        url: `${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`,
+        method: 'GET',
+        json: true
+      })
+      if (this._verify(this._createResultMessage(result), result.signature)) {
+        if (result.resultCode.toString() === '0') {
+          return result
+        } else {
+          throw result
+        }
+      }
+
+    }
+    throw new Error('Echo - Verification failed')
+  }
 
 
   payOrder(order, close = true, options = {}) {
@@ -331,21 +297,15 @@ const CSOBPaymentModule = class CSOBPaymentModule {
     })
   }
 
-  verifyResult(result) {
-    return new RSVP.Promise((resolve, reject) => {
-      if (result.resultCode.toString() === '0') {
-        if (this._verify(this._createResultMessage(result), result.signature)) {
-          this.logger('verifyResult', result)
-          result['merchantData'] = Buffer.from(result.merchantData, 'base64').toString('ascii')
-          resolve(result)
-        } else {
-          reject(Error('Verification failed'))
-        }
+  async verifyResult(result) {
+    if (result.resultCode.toString() === '0') {
+      if (this._verify(this._createResultMessage(result), result.signature)) {
+        this.logger('verifyResult', result)
+        result['merchantData'] = Buffer.from(result.merchantData, 'base64').toString('ascii')
+        return result
       } else {
-        reject(result)
+        throw new Error('Verification failed')
       }
-    })
+    }
   }
 }
-
-module.exports.CSOBPaymentModule = CSOBPaymentModule

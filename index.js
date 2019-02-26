@@ -24,13 +24,13 @@ export class CSOBPaymentModule {
     }
 
     this.config.payloadTemplate = {
-      'merchantId': this.config.merchantId,
-      'payOperation': 'payment',
-      'payMethod': 'card',
-      'currency': 'CZK',
-      'language': 'CZ',
-      'returnUrl': this.config.calbackUrl,
-      'returnMethod': 'POST'
+      merchantId: this.config.merchantId,
+      payOperation: 'payment',
+      payMethod: 'card',
+      currency: 'CZK',
+      language: 'CZ',
+      returnUrl: this.config.calbackUrl,
+      returnMethod: 'POST'
     }
   }
 

@@ -9,12 +9,12 @@
     "interface-name": [true, "never-prefix"],
     "max-line-length": [false, 120],
     "arrow-parens": false,
-    "space-before-function-paren": false
+    "space-before-function-paren": false,
+    "no-consecutive-blank-lines": true
   },
   "rulesDirectory": [],
   "linterOptions":{
     "exclude": [
-      "src/migration/*"
     ]
   }
 }

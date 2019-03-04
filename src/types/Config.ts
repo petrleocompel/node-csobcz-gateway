@@ -1,3 +1,5 @@
+import Logger from 'bunyan'
+
 export interface Config {
   gateUrl?: string
   privateKey?: string
@@ -5,6 +7,6 @@ export interface Config {
   bankPublicKey?: string
   calbackUrl?: string
   merchantId?: string,
-  logging?: any,
-  payloadTemplate?: any
+  logging?: Logger,
+  payloadTemplate?: Object
 }

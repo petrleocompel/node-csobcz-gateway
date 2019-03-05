@@ -2,9 +2,12 @@
   "name": "csobcz_payment_gateway",
   "version": "0.0.5",
   "description": "CSOB CZ payment gateway module",
-  "main": "index.js",
+  "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "tslint src/**/*.ts",
+    "lint:fix": "tslint --fix 'src/**/*.ts'",
+    "build": "tsc"
   },
   "author": "",
   "license": "ISC",
@@ -13,6 +16,8 @@
     "superagent": "^4.1.0"
   },
   "devDependencies": {
+    "@types/bunyan": "^1.8.5",
+    "@types/mocha": "^5.2.6",
     "@types/node": "^11.9.5",
     "precommit": "^1.2.2",
     "ts-node": "^8.0.2",

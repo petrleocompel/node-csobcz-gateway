@@ -4,6 +4,8 @@ import * as crypto from 'crypto'
 import { Config } from './types/Config'
 import * as request from 'superagent'
 import * as Logger from 'bunyan'
+import { Order } from './types/Order'
+import moment from 'moment'
 
 export class CSOBPaymentModule {
   private logger: Logger
@@ -70,7 +72,6 @@ export class CSOBPaymentModule {
     return url
   }
 
-  // status
   async status(id: string) {
     const dttm = this.createDttm()
     const signature = this.sign(this.createMessageString({
@@ -81,7 +82,7 @@ export class CSOBPaymentModule {
 
     const url = `${this.config.gateUrl}/payment/status/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`
     this.logger.info('status', url)
-    const result = request({
+    const result = await request({
       url,
       method: 'GET',
       json: true
@@ -108,7 +109,7 @@ export class CSOBPaymentModule {
 
     payload['signature'] = this.sign(this.createMessageString(payload))
     this.logger.info('reverse', payload)
-    const result = request({
+    const result = await request({
       url: `${this.config.gateUrl}/payment/reverse`,
       method: 'PUT',
       json: true,
@@ -125,8 +126,7 @@ export class CSOBPaymentModule {
 
   }
 
-// close
-  close(id: string, amount: number) {
+  public async close(id: string, amount: number) {
     const payload = {
       merchantId: this.config.merchantId,
       payId: id,
@@ -136,7 +136,7 @@ export class CSOBPaymentModule {
 
     payload['signature'] = this.sign(this.createMessageString(payload))
     this.logger.info('close', payload)
-    const result = request({
+    const result = await request({
       url: `${this.config.gateUrl}/payment/close`,
       method: 'PUT',
       json: true,
@@ -153,8 +153,7 @@ export class CSOBPaymentModule {
 
   }
 
-// refund
-  async refund(id: string, amount: number) {
+  public async refund(id: string, amount: number) {
     const payload = {
       merchantId: this.config.merchantId,
       payId: id,
@@ -180,7 +179,6 @@ export class CSOBPaymentModule {
     throw new Error('Refund - Verification failed')
   }
 
-// refund
   public async echo(method = 'POST') {
     const payload = {
       merchantId: this.config.merchantId,
@@ -215,19 +213,37 @@ export class CSOBPaymentModule {
     throw new Error('Echo - Verification failed')
   }
 
-  public async payOrder(order, close = true, options = {}) {
-    const payload = Object.assign(options, this.config.payloadTemplate)
-    payload['orderNo'] = order.id
-    payload['dttm'] = this.createDttm()
-    payload['description'] = order.description
-    payload['cart'] = order.items
-    payload['totalAmount'] = order.items.reduce((sum, item) => sum + item.amount, 0)
-    payload['closePayment'] = close
-    if (order.merchantData) {
-      payload['merchantData'] = Buffer.from(order.merchantData).toString('base64')
+  public async payOrder(order: Order, close = true, options = {}) {
+    const values = {
+      orderNo: order.id,
+      dttm: this.createDttm(),
+      description: order.description,
+      cart: order.items,
+      totalAmount: order.items.reduce((sum, item) => sum + item.amount, 0),
+      closePayment: close,
+      merchantData: order.merchantData ? Buffer.from(order.merchantData).toString('base64') : undefined
     }
+    const payload = { ...options, ...this.config.payloadTemplate, ...values }
     this.logger.info('payOrder', payload)
     const result = await this.init(payload)
+    this.logger.info('payOrder - result', result)
+    return this.getRedirectUrl(result.payId)
+  }
+
+  public async oneClickPayOrder(order: Order, close = true, options = {}) {
+    const values = {
+      orderNo: order.id,
+      dttm: this.createDttm(),
+      payOperation: 'oneclickPayment',
+      description: order.description,
+      cart: order.items,
+      totalAmount: order.items.reduce((sum, item) => sum + item.amount, 0),
+      closePayment: close,
+      merchantData: order.merchantData ? Buffer.from(order.merchantData).toString('base64') : undefined
+    }
+    const payload = { ...options, ...this.config.payloadTemplate, ...values }
+    this.logger.info('payOrder', payload)
+    const result = await this.initOneClick(payload)
     this.logger.info('payOrder - result', result)
     return this.getRedirectUrl(result.payId)
   }
@@ -244,15 +260,8 @@ export class CSOBPaymentModule {
     }
   }
 
-  private prefixNumber(num: number) {
-    return num < 10 ? '0' + num : num
-  }
-
   private createDttm() {
-    const date = new Date()
-    return `${date.getFullYear()}${this.prefixNumber(date.getMonth())}` +
-      `${this.prefixNumber(date.getDay())}${this.prefixNumber(date.getHours())}` +
-      `${this.prefixNumber(date.getMinutes())}${this.prefixNumber(date.getSeconds())}`
+    return moment().format('YYYYMMDDHHmmss')
   }
 
   private sign(text: string) {

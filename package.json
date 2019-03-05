@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "moment": "^2.24.0",
     "request": "^2.87.0",
     "superagent": "^4.1.0"
   },

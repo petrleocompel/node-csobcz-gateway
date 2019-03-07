@@ -51,12 +51,11 @@ export class CSOBPaymentModule {
     if (this.verify(this.createResultMessage(result), result.signature)) {
       if (result.resultCode.toString() === '0') {
         return result
-      } else {
-        throw new GatewayError('init failed', result)
       }
+      throw new GatewayError('init failed', result)
+
     }
     throw new Error('Init - Verification failed')
-
   }
 
   // process - 2.krok - redirect url
@@ -92,14 +91,13 @@ export class CSOBPaymentModule {
     if (this.verify(message, result.signature)) {
       if (result.resultCode.toString() === '0') {
         return result
-      } else {
-        throw new GatewayError('status failed', result)
       }
+      throw new GatewayError('status failed', result)
+
     }
     throw new Error('Status - Verification failed')
   }
 
-  // reverse
   public async reverse(id: string) {
     const payload = {
       merchantId: this.config.merchantId,
@@ -118,9 +116,9 @@ export class CSOBPaymentModule {
     if (this.verify(this.createResultMessage(result), result.signature)) {
       if (result.resultCode.toString() === '0') {
         return result
-      } else {
-        throw new GatewayError('reverse failed', result)
       }
+      throw new GatewayError('reverse failed', result)
+
     }
     throw new Error('Reverse - Verification failed')
 
@@ -145,9 +143,9 @@ export class CSOBPaymentModule {
     if (this.verify(this.createResultMessage(result), result.signature)) {
       if (result.resultCode.toString() === '0') {
         return result
-      } else {
-        throw new GatewayError('close failed', result)
       }
+      throw new GatewayError('close failed', result)
+
     }
     throw new Error('Close - Verification failed')
 
@@ -172,9 +170,9 @@ export class CSOBPaymentModule {
     if (this.verify(this.createResultMessage(result), result.signature)) {
       if (result.resultCode.toString() === '0') {
         return result
-      } else {
-        throw new GatewayError('refund failed', result)
       }
+      throw new GatewayError('refund failed', result)
+
     }
     throw new Error('Refund - Verification failed')
   }
@@ -206,9 +204,9 @@ export class CSOBPaymentModule {
     if (this.verify(this.createResultMessage(result), result.signature)) {
       if (result.resultCode.toString() === '0') {
         return result
-      } else {
-        throw new GatewayError('echo failed', result)
       }
+      throw new GatewayError('echo failed', result)
+
     }
     throw new Error('Echo - Verification failed')
   }
@@ -254,9 +252,9 @@ export class CSOBPaymentModule {
         this.logger.info('verifyResult', result)
         result['merchantData'] = Buffer.from(result.merchantData, 'base64').toString('ascii')
         return result
-      } else {
-        throw new GatewayError('Verification failed')
       }
+      throw new GatewayError('Verification failed')
+
     }
   }
 

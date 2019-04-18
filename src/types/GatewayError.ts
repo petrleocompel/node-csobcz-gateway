@@ -1,4 +1,4 @@
-class GatewayError extends Error {
+export default class GatewayError extends Error {
   private meta: Object
 
   constructor(message: string, meta?: Object) {

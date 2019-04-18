@@ -1,0 +1,13 @@
+language: node_js
+before_script:
+- npm install -g typescript
+- tsc
+- npm pack
+deploy:
+  skip_cleanup: true
+  provider: npm
+  email: "t.voslar@gmail.com"
+  api_key: "7b035fce-a9b8-4427-950e-8d5e2c764079"
+  on:
+    tags: true
+    repo: blabu-com/node-csobcz-gateway

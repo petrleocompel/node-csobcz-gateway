@@ -36,6 +36,13 @@ export enum PaymentMethod {
   CARD = 'card'
 }
 
+export interface OneClickPaymentInput {
+  templatePaymentId: string,
+  amount: number,
+  orderNumber: string,
+  currency: Currency
+}
+
 export interface InputPayload {
   orderNo: string,
   totalAmount: number,

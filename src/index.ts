@@ -4,7 +4,7 @@ import * as Logger from 'bunyan'
 import * as crypto from 'crypto'
 import * as superagent from 'superagent'
 
-import { Currency, InitPayload, InputPayload, Order, PaymentMethod, PaymentOperation } from './types/Order'
+import { Currency, InitPayload, InputPayload, OneClickPaymentInput, Order, PaymentMethod, PaymentOperation } from './types/Order'
 
 import { Config } from './types/Config'
 import GatewayError from './types/GatewayError'
@@ -48,7 +48,6 @@ export class CSOBPaymentModule {
     const result = await superagent
       .post(`${this.config.gateUrl}/payment/init`)
       .send(payload)
-
     if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
       if (result.body.resultCode.toString() === '0') {
         return result.body
@@ -59,7 +58,15 @@ export class CSOBPaymentModule {
     throw new Error('Init - Verification failed')
   }
 
-  async oneClickPayment (payload: {}) {
+  async oneClickPayment (input: OneClickPaymentInput) {
+    const payload = {
+      merchantId: this.config.merchantId,
+      origPayId: input.templatePaymentId,
+      orderNo: input.orderNumber,
+      dttm: this.createDttm(),
+      totalAmount: input.amount,
+      currency: input.currency
+    }
     payload['signature'] = this.sign(this.createPayloadMessage(payload))
     let result
     try {
@@ -81,8 +88,6 @@ export class CSOBPaymentModule {
         let startResult
         try {
           startPayload['signature'] = this.sign(this.createPayloadMessage(startPayload))
-          console.log('after')
-          console.log('start call', startPayload)
           startResult = await superagent
             .post(`${this.config.gateUrl}/payment/oneclick/start`)
             .send(startPayload)
@@ -134,7 +139,6 @@ export class CSOBPaymentModule {
       .send()
 
     const message = this.createResultMessage(result.body)
-
     if (this.verify(message, result.body.signature)) {
       if (result.body.resultCode.toString() === '0') {
         return result.body

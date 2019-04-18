@@ -1,12 +1,16 @@
 /* global process */
 
-import * as crypto from 'crypto'
-import { Config } from './types/Config'
-import * as request from 'superagent'
 import * as Logger from 'bunyan'
-import { Order } from './types/Order'
+import * as crypto from 'crypto'
+import * as superagent from 'superagent'
+
+import { Currency, InitPayload, InputPayload, Order, PaymentMethod, PaymentOperation } from './types/Order'
+
+import { Config } from './types/Config'
+import GatewayError from './types/GatewayError'
 import moment from 'moment'
 
+export { Currency }
 export class CSOBPaymentModule {
   private logger: Logger
   private config: Config
@@ -39,33 +43,39 @@ export class CSOBPaymentModule {
   }
 
   // init - 1. krok - inicializace platby
-  async init(payload) {
+  async init(payload: InitPayload) {
     payload['signature'] = this.sign(this.createPayloadMessage(payload))
-    this.logger.info('init', payload)
-    const result = await request({
-      url: `${this.config.gateUrl}/payment/init`,
-      method: 'POST',
-      json: true,
-      body: payload
-    })
-    if (this.verify(this.createResultMessage(result), result.signature)) {
-      if (result.resultCode.toString() === '0') {
-        return result
+    const result = await superagent
+      .post(`${this.config.gateUrl}/payment/init`)
+      .send(payload)
+
+    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+      if (result.body.resultCode.toString() === '0') {
+        return result.body
       }
-      throw new GatewayError('init failed', result)
+      throw new GatewayError('init failed', result.body)
 
     }
     throw new Error('Init - Verification failed')
   }
 
+  public createOneClickPaymentPayload (payload: InputPayload): any {
+    return {
+      ...this.config.payloadTemplate,
+      dttm: this.createDttm(),
+      payOperation: PaymentOperation.ONE_CLICK_PAYMENT,
+      payMethod: PaymentMethod.CARD,
+      returnMethod: 'GET',
+      closePayment: true,
+      ...payload
+    }
+  }
+
   // process - 2.krok - redirect url
   getRedirectUrl(id: string) {
     const dttm = this.createDttm()
-    const signature = this.sign(this.createMessageString({
-      merchantId: this.config.merchantId,
-      payId: id,
-      dttm
-    }))
+
+    const signature = this.sign(`${this.config.merchantId}|${id}|${dttm}`)
     const url = `${this.config.gateUrl}/payment/process/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`
     this.logger.info('redirectUrl', url)
     return url
@@ -73,24 +83,18 @@ export class CSOBPaymentModule {
 
   async status(id: string) {
     const dttm = this.createDttm()
-    const signature = this.sign(this.createMessageString({
-      merchantId: this.config.merchantId,
-      payId: id,
-      dttm
-    }))
+    const signature = this.sign(`${this.config.merchantId}|${id}|${dttm}`)
 
     const url = `${this.config.gateUrl}/payment/status/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`
-    this.logger.info('status', url)
-    const result = await request({
-      url,
-      method: 'GET',
-      json: true
-    })
-    const message = this.createResultMessage(result)
+    const result = await superagent
+      .get(url)
+      .send()
 
-    if (this.verify(message, result.signature)) {
-      if (result.resultCode.toString() === '0') {
-        return result
+    const message = this.createResultMessage(result.body)
+
+    if (this.verify(message, result.body.signature)) {
+      if (result.body.resultCode.toString() === '0') {
+        return result.body
       }
       throw new GatewayError('status failed', result)
 
@@ -107,7 +111,7 @@ export class CSOBPaymentModule {
 
     payload['signature'] = this.sign(this.createMessageString(payload))
     this.logger.info('reverse', payload)
-    const result = await request({
+    const result = await superagent({
       url: `${this.config.gateUrl}/payment/reverse`,
       method: 'PUT',
       json: true,
@@ -134,7 +138,7 @@ export class CSOBPaymentModule {
 
     payload['signature'] = this.sign(this.createMessageString(payload))
     this.logger.info('close', payload)
-    const result = await request({
+    const result = await superagent({
       url: `${this.config.gateUrl}/payment/close`,
       method: 'PUT',
       json: true,
@@ -161,7 +165,7 @@ export class CSOBPaymentModule {
 
     payload['signature'] = this.sign(this.createMessageString(payload))
     this.logger.info('refund', payload)
-    const result = request({
+    const result = superagent({
       url: `${this.config.gateUrl}/payment/refund`,
       method: 'PUT',
       json: true,
@@ -188,15 +192,15 @@ export class CSOBPaymentModule {
     this.logger.info('echo', payload)
     let result
     if (method === 'POST') {
-      result = await request({
+      result = await superagent({
         url: `${this.config.gateUrl}/echo`,
         method: 'POST',
         json: true,
         body: payload
       })
     } else {
-      result = await request({
-        url: `${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`,
+      result = await superagent({
+        url: `${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${payload.signature}`,
         method: 'GET',
         json: true
       })
@@ -223,9 +227,9 @@ export class CSOBPaymentModule {
     }
     const payload = { ...options, ...this.config.payloadTemplate, ...values }
     this.logger.info('payOrder', payload)
-    const result = await this.init(payload)
-    this.logger.info('payOrder - result', result)
-    return this.getRedirectUrl(result.payId)
+    // const result = await this.init(payload)
+    // this.logger.info('payOrder - result', result)
+    // return this.getRedirectUrl(result.payId)
   }
 
   public async oneClickPayOrder(order: Order, close = true, options = {}) {
@@ -241,9 +245,9 @@ export class CSOBPaymentModule {
     }
     const payload = { ...options, ...this.config.payloadTemplate, ...values }
     this.logger.info('payOrder', payload)
-    const result = await this.initOneClick(payload)
-    this.logger.info('payOrder - result', result)
-    return this.getRedirectUrl(result.payId)
+    // const result = await this.initOneClick(payload)
+    // this.logger.info('payOrder - result', result)
+    // return this.getRedirectUrl(result.payId)
   }
 
   public async verifyResult(result) {

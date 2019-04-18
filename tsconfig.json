@@ -9,6 +9,7 @@
     "allowJs": false,
     "sourceMap": true,
     "outDir": "build",
+    "declaration": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "strictPropertyInitialization": false

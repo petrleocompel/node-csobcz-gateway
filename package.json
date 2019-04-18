@@ -1,8 +1,9 @@
 {
-  "name": "csobcz_payment_gateway",
-  "version": "0.0.5",
+  "name": "@blabu.com/csobcz_payment_gateway",
+  "version": "0.0.1",
   "description": "CSOB CZ payment gateway module",
-  "main": "src/index.ts",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "tslint src/**/*.ts",

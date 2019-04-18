@@ -40,8 +40,9 @@ export interface InputPayload {
   orderNo: string,
   totalAmount: number,
   currency: Currency,
-  cart: Item[],
+  cart?: Item[],
   description: string,
+  origPayId?: string
 }
 
 export interface InitPayload {

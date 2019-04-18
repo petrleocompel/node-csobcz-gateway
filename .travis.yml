@@ -6,8 +6,14 @@ before_script:
 deploy:
   skip_cleanup: true
   provider: npm
+<<<<<<< HEAD
   email: "t.voslar@gmail.com"
   api_key: "7b035fce-a9b8-4427-950e-8d5e2c764079"
+=======
+  email: t.voslar@gmail.com
+  api_key:
+    secure: dI66Qbw8WEUQevWtGQ9qmE9a2R4ERUg120hdpGizfsxokwXZsCS6MvZjeRJYhxkYT4PnttaIfJisFu+baBl+oDAtJtYG88v8iiotpe+2nJzzaKxST6I5gfgrg3DK5iEOUuCD1G0t1BLlZ9+LC39hcTxIS5Mn91CDhA8kavW1kQCGocDWzq1K0VOtOKjpTvq2aqifuahnUtEbXy3+BRebr/BJGA9uSf9+fqyu6xv9TpOAX0CPwJQiRXjQIS0MbRH8WPIS0NjZ6mjscKjtoNStyrdWSJwMzkdg6sGZMggzvOg//+OGx+/Kjag8AMUtKD+Xh1eXseo4d7/VNk/LSS/VhCpEuybetmYDjMl/VOwJoND/60kUyOe63UYKg9WiQEiEtLuimPgUA9PXulldlmESPBRh1LFDD21Wv2FNAD8zI+Wbj3BPA+BkxcgwWN4jDlCPflGteUewDXcDQKrLiJKK87EnJHlbP/TwY0+Rrx5u77G4DNSHm9Gv1b6aNGLZmlHBgB1Qt/xuSVHv76sOUFr8MfPd+m/Y+wvDKuN5lY4B1eGZ/7KOMQQgT7ocfbGkT+7tIeDw5NoIvC6UEKHTVGosOLYm0aUDiToN2UicwTSN7gKHkXDt2RN4/pNCrDbmSUJmwsmeIRVs+h3cobMulOAs8qJMhDghy0eihmeaSPqVmd8=
+>>>>>>> One click payment.
   on:
     tags: true
     repo: blabu-com/node-csobcz-gateway

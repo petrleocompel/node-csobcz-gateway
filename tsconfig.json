@@ -16,15 +16,14 @@
   },
   "include": [
     "src/*.ts",
-    "src/**/*.ts",
-    "test/*.ts",
-    "test/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "docs",
     "coverage",
     ".nyc_output",
-    "migrations"
+    "migrations",
+    "test"
   ]
 }

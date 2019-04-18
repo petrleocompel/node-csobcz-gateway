@@ -59,6 +59,49 @@ export class CSOBPaymentModule {
     throw new Error('Init - Verification failed')
   }
 
+  async oneClickPayment (payload: {}) {
+    payload['signature'] = this.sign(this.createPayloadMessage(payload))
+    let result
+    try {
+      result = await superagent
+        .post(`${this.config.gateUrl}/payment/oneclick/init`)
+        .send(payload)
+    } catch (err) {
+      console.log('oneclick failed', err)
+    }
+
+    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+      if (result.body.resultCode.toString() === '0') {
+        const startPayload = {
+          merchantId: this.config.merchantId,
+          payId: result.body.payId,
+          dttm: this.createDttm()
+        }
+
+        let startResult
+        try {
+          startPayload['signature'] = this.sign(this.createPayloadMessage(startPayload))
+          console.log('after')
+          console.log('start call', startPayload)
+          startResult = await superagent
+            .post(`${this.config.gateUrl}/payment/oneclick/start`)
+            .send(startPayload)
+        } catch (err) {
+          console.log('oneclick start failed', err)
+        }
+
+        if (this.verify(this.createResultMessage(startResult.body), startResult.body.signature)) {
+          if (startResult.body.resultCode.toString() === '0') {
+            return startResult.body
+          }
+        }
+      }
+      throw new GatewayError('init failed', result.body)
+
+    }
+    throw new Error('Init - Verification failed')
+  }
+
   public createOneClickPaymentPayload (payload: InputPayload): any {
     return {
       ...this.config.payloadTemplate,
@@ -215,41 +258,6 @@ export class CSOBPaymentModule {
     throw new Error('Echo - Verification failed')
   }
 
-  public async payOrder(order: Order, close = true, options = {}) {
-    const values = {
-      orderNo: order.id,
-      dttm: this.createDttm(),
-      description: order.description,
-      cart: order.items,
-      totalAmount: order.items.reduce((sum, item) => sum + item.amount, 0),
-      closePayment: close,
-      merchantData: order.merchantData ? Buffer.from(order.merchantData).toString('base64') : undefined
-    }
-    const payload = { ...options, ...this.config.payloadTemplate, ...values }
-    this.logger.info('payOrder', payload)
-    // const result = await this.init(payload)
-    // this.logger.info('payOrder - result', result)
-    // return this.getRedirectUrl(result.payId)
-  }
-
-  public async oneClickPayOrder(order: Order, close = true, options = {}) {
-    const values = {
-      orderNo: order.id,
-      dttm: this.createDttm(),
-      payOperation: 'oneclickPayment',
-      description: order.description,
-      cart: order.items,
-      totalAmount: order.items.reduce((sum, item) => sum + item.amount, 0),
-      closePayment: close,
-      merchantData: order.merchantData ? Buffer.from(order.merchantData).toString('base64') : undefined
-    }
-    const payload = { ...options, ...this.config.payloadTemplate, ...values }
-    this.logger.info('payOrder', payload)
-    // const result = await this.initOneClick(payload)
-    // this.logger.info('payOrder - result', result)
-    // return this.getRedirectUrl(result.payId)
-  }
-
   public async verifyResult(result) {
     if (result.resultCode.toString() === '0') {
       if (this.verify(this.createResultMessage(result), result.signature)) {
@@ -262,7 +270,7 @@ export class CSOBPaymentModule {
     }
   }
 
-  private createDttm() {
+  public createDttm() {
     return moment().format('YYYYMMDDHHmmss')
   }
 
@@ -288,14 +296,17 @@ export class CSOBPaymentModule {
   private createPayloadMessage(payload) {
 
     const payloadKeys = [
-      'merchantId', 'orderNo', 'dttm', 'payOperation', 'payMethod',
+      'merchantId', 'origPayId', 'orderNo', 'payId', 'dttm', 'payOperation', 'payMethod',
       'totalAmount', 'currency', 'closePayment', 'returnUrl', 'returnMethod'
     ]
     const cartItemKeys = [ 'name', 'quantity', 'amount', 'description' ]
     let payloadMessageArray = this.createMessageArray(payload, payloadKeys)
-    payload.cart.forEach(cartItem => {
-      payloadMessageArray = payloadMessageArray.concat(this.createMessageArray(cartItem, cartItemKeys))
-    })
+    if (payload.cart) {
+      payload.cart.forEach(cartItem => {
+        payloadMessageArray = payloadMessageArray.concat(this.createMessageArray(cartItem, cartItemKeys))
+      })
+    }
+
     payloadMessageArray = payloadMessageArray.concat(this.createMessageArray(payload, [
       'description', 'merchantData', 'customerId', 'language', 'ttlSec', 'logoVersion', 'colorSchemeVersion'
     ]))

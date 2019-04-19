@@ -1,9 +1,11 @@
-export default class GatewayError extends Error {
-  private meta: Object
+import { PaymentResult } from './Payment'
 
-  constructor(message: string, meta?: Object) {
+export default class GatewayError extends Error {
+  public paymentResult: PaymentResult
+
+  constructor(message: string, paymentResult?: PaymentResult) {
     super(message)
     this.message = message
-    this.meta = meta
+    this.paymentResult = paymentResult
   }
 }

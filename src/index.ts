@@ -4,61 +4,63 @@ import * as Logger from 'bunyan'
 import * as crypto from 'crypto'
 import * as superagent from 'superagent'
 
-import { Currency, InitPayload, InputPayload, OneClickPaymentInput, Order, PaymentMethod, PaymentOperation } from './types/Order'
+import {
+  Currency,
+  InitPayload,
+  InputPayload,
+  Language,
+  OneClickPaymentInput,
+  PaymentMethod,
+  PaymentOperation,
+  PaymentResult,
+  PaymentStatus,
+  ResultCode
+} from './types/Payment'
 
 import { Config } from './types/Config'
 import GatewayError from './types/GatewayError'
+import VerificationError from './types/VerificationError'
 import moment from 'moment'
 
-export { Currency }
+export { Currency, Language, ResultCode, PaymentStatus, GatewayError, VerificationError }
 export class CSOBPaymentModule {
   private logger: Logger
   private config: Config
 
-  constructor(config: Config = {}) {
-    this.logger = config.logging ? config.logging : {
-      info: (args) => {
-        console.log(args)
-      }
-    } as Logger
-
-    this.config = {
-      gateUrl: config.gateUrl || process.env.GATEWAY_URL,
-      privateKey: config.privateKey || process.env.MERCHANT_PRIVATE_KEY,
-      merchantPublicKey: config.merchantPublicKey || process.env.MERCHANT_PUBLIC_KEY,
-      bankPublicKey: config.bankPublicKey || process.env.BANK_PUBLIC_KEY,
-      calbackUrl: config.calbackUrl || process.env.CALLBACK_URL,
-      merchantId: config.merchantId || process.env.MERCHANT_ID
-    }
+  constructor(config: Config) {
+    this.logger = config.logger
+    this.config = config
 
     this.config.payloadTemplate = {
       merchantId: this.config.merchantId,
-      payOperation: 'payment',
       payMethod: 'card',
-      currency: 'CZK',
-      language: 'CZ',
       returnUrl: this.config.calbackUrl,
       returnMethod: 'POST'
     }
   }
 
-  // init - 1. krok - inicializace platby
-  async init(payload: InitPayload) {
-    payload['signature'] = this.sign(this.createPayloadMessage(payload))
-    const result = await superagent
-      .post(`${this.config.gateUrl}/payment/init`)
-      .send(payload)
-    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-      if (result.body.resultCode.toString() === '0') {
-        return result.body
-      }
-      throw new GatewayError('init failed', result.body)
+  async init(payload: InitPayload): Promise<PaymentResult> {
+    try {
+      payload['signature'] = this.sign(this.createPayloadMessage(payload))
+      const result = await superagent
+        .post(`${this.config.gateUrl}/payment/init`)
+        .send(payload)
+      if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+        if (result.body.resultCode.toString() === '0') {
+          return result.body
+        }
 
+        throw new GatewayError('Payment failed', result.body)
+      } else {
+        throw new VerificationError('Verification failed')
+      }
+    } catch (err) {
+      this.logger.error({ err }, 'Uknown error')
+      throw err
     }
-    throw new Error('Init - Verification failed')
   }
 
-  async oneClickPayment (input: OneClickPaymentInput) {
+  async oneClickPayment (input: OneClickPaymentInput): Promise<PaymentResult> {
     const payload = {
       merchantId: this.config.merchantId,
       origPayId: input.templatePaymentId,
@@ -73,45 +75,45 @@ export class CSOBPaymentModule {
       result = await superagent
         .post(`${this.config.gateUrl}/payment/oneclick/init`)
         .send(payload)
-    } catch (err) {
-      console.log('oneclick failed', err)
-    }
 
-    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-      if (result.body.resultCode.toString() === '0') {
-        const startPayload = {
-          merchantId: this.config.merchantId,
-          payId: result.body.payId,
-          dttm: this.createDttm()
-        }
+      if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+        if (result.body.resultCode.toString() === '0') {
+          const startPayload = {
+            merchantId: this.config.merchantId,
+            payId: result.body.payId,
+            dttm: this.createDttm()
+          }
 
-        let startResult
-        try {
+          let startResult
           startPayload['signature'] = this.sign(this.createPayloadMessage(startPayload))
           startResult = await superagent
             .post(`${this.config.gateUrl}/payment/oneclick/start`)
             .send(startPayload)
-        } catch (err) {
-          console.log('oneclick start failed', err)
-        }
 
-        if (this.verify(this.createResultMessage(startResult.body), startResult.body.signature)) {
-          if (startResult.body.resultCode.toString() === '0') {
-            return startResult.body
+          if (this.verify(this.createResultMessage(startResult.body), startResult.body.signature)) {
+            if (startResult.body.resultCode.toString() === '0') {
+              return startResult.body
+            }
+          } else {
+            throw new VerificationError('Verification failed')
           }
         }
-      }
-      throw new GatewayError('init failed', result.body)
 
+        throw new GatewayError('Payment failed', result.body)
+      } else {
+        throw new VerificationError('Verification failed')
+      }
+    } catch (err) {
+      this.logger.error({ err }, 'Uknown error')
+      throw new Error(err)
     }
-    throw new Error('Init - Verification failed')
   }
 
-  public createOneClickPaymentPayload (payload: InputPayload): any {
+  public createPaymentPayload (payload: InputPayload, oneClick: boolean): any {
     return {
       ...this.config.payloadTemplate,
       dttm: this.createDttm(),
-      payOperation: PaymentOperation.ONE_CLICK_PAYMENT,
+      payOperation: oneClick ? PaymentOperation.ONE_CLICK_PAYMENT : PaymentOperation.PAYMENT,
       payMethod: PaymentMethod.CARD,
       returnMethod: 'GET',
       closePayment: true,
@@ -119,13 +121,12 @@ export class CSOBPaymentModule {
     }
   }
 
-  // process - 2.krok - redirect url
   getRedirectUrl(id: string) {
     const dttm = this.createDttm()
 
     const signature = this.sign(`${this.config.merchantId}|${id}|${dttm}`)
     const url = `${this.config.gateUrl}/payment/process/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`
-    this.logger.info('redirectUrl', url)
+
     return url
   }
 
@@ -143,13 +144,14 @@ export class CSOBPaymentModule {
       if (result.body.resultCode.toString() === '0') {
         return result.body
       }
-      throw new GatewayError('status failed', result)
 
+      throw new GatewayError('Status failed', result.body)
     }
-    throw new Error('Status - Verification failed')
+
+    throw new VerificationError('Verification failed')
   }
 
-  public async reverse(id: string) {
+  public async reverse(id: string): Promise<PaymentResult> {
     const payload = {
       merchantId: this.config.merchantId,
       payId: id,
@@ -157,25 +159,22 @@ export class CSOBPaymentModule {
     }
 
     payload['signature'] = this.sign(this.createMessageString(payload))
-    this.logger.info('reverse', payload)
-    const result = await superagent({
-      url: `${this.config.gateUrl}/payment/reverse`,
-      method: 'PUT',
-      json: true,
-      body: payload
-    })
-    if (this.verify(this.createResultMessage(result), result.signature)) {
-      if (result.resultCode.toString() === '0') {
-        return result
+    const result = await superagent()
+      .put(`${this.config.gateUrl}/payment/reverse`)
+      .send(payload)
+
+    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+      if (result.body.resultCode.toString() === '0') {
+        return result.body
       }
-      throw new GatewayError('reverse failed', result)
 
+      throw new GatewayError('reverse failed', result.body)
     }
-    throw new Error('Reverse - Verification failed')
 
+    throw new VerificationError('Verification failed')
   }
 
-  public async close(id: string, amount: number) {
+  public async close(id: string, amount: number): Promise<PaymentResult> {
     const payload = {
       merchantId: this.config.merchantId,
       payId: id,
@@ -184,22 +183,19 @@ export class CSOBPaymentModule {
     }
 
     payload['signature'] = this.sign(this.createMessageString(payload))
-    this.logger.info('close', payload)
-    const result = await superagent({
-      url: `${this.config.gateUrl}/payment/close`,
-      method: 'PUT',
-      json: true,
-      body: payload
-    })
-    if (this.verify(this.createResultMessage(result), result.signature)) {
-      if (result.resultCode.toString() === '0') {
+    const result = await superagent()
+      .put(`${this.config.gateUrl}/payment/close`)
+      .send(payload)
+
+    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+      if (result.body.resultCode.toString() === '0') {
         return result
       }
-      throw new GatewayError('close failed', result)
 
+      throw new GatewayError('Close failed', result.body)
     }
-    throw new Error('Close - Verification failed')
 
+    throw new VerificationError('Verification failed')
   }
 
   public async refund(id: string, amount: number) {
@@ -211,21 +207,19 @@ export class CSOBPaymentModule {
     }
 
     payload['signature'] = this.sign(this.createMessageString(payload))
-    this.logger.info('refund', payload)
-    const result = superagent({
-      url: `${this.config.gateUrl}/payment/refund`,
-      method: 'PUT',
-      json: true,
-      body: payload
-    })
-    if (this.verify(this.createResultMessage(result), result.signature)) {
-      if (result.resultCode.toString() === '0') {
+    const result = superagent()
+      .put(`${this.config.gateUrl}/payment/refund`)
+      .send(payload)
+
+    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+      if (result.body.resultCode.toString() === '0') {
         return result
       }
-      throw new GatewayError('refund failed', result)
 
+      throw new GatewayError('Refund failed', result.body)
     }
-    throw new Error('Refund - Verification failed')
+
+    throw new VerificationError('Verification failed')
   }
 
   public async echo(method = 'POST') {
@@ -236,68 +230,29 @@ export class CSOBPaymentModule {
     }
 
     payload['signature'] = this.sign(this.createMessageString(payload))
-    this.logger.info('echo', payload)
     let result
     if (method === 'POST') {
-      result = await superagent({
-        url: `${this.config.gateUrl}/echo`,
-        method: 'POST',
-        json: true,
-        body: payload
-      })
+      result = await superagent()
+        .post(`${this.config.gateUrl}/echo`)
+        .send(payload)
     } else {
-      result = await superagent({
-        url: `${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${payload.signature}`,
-        method: 'GET',
-        json: true
-      })
+      result = await superagent()
+        .post(`${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${payload.signature}`)
+        .send()
     }
-    if (this.verify(this.createResultMessage(result), result.signature)) {
-      if (result.resultCode.toString() === '0') {
+
+    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+      if (result.body.resultCode.toString() === '0') {
         return result
       }
-      throw new GatewayError('echo failed', result)
 
+      throw new GatewayError('Echo failed', result.body)
     }
-    throw new Error('Echo - Verification failed')
+
+    throw new VerificationError('Verification failed')
   }
 
-  public async verifyResult(result) {
-    if (result.resultCode.toString() === '0') {
-      if (this.verify(this.createResultMessage(result), result.signature)) {
-        this.logger.info('verifyResult', result)
-        result['merchantData'] = Buffer.from(result.merchantData, 'base64').toString('ascii')
-        return result
-      }
-      throw new GatewayError('Verification failed')
-
-    }
-  }
-
-  public createDttm() {
-    return moment().format('YYYYMMDDHHmmss')
-  }
-
-  private sign(text: string) {
-    return crypto.createSign('sha1').update(text).sign(this.config.privateKey, 'base64')
-  }
-
-  private verify(text: string, signature: string) {
-    return crypto.createVerify('sha1').update(text).verify(this.config.bankPublicKey, signature, 'base64')
-  }
-
-  private createMessageArray(data, keys) {
-    if (!keys) {
-      keys = Object.keys(data)
-    }
-    return keys.map(key => data[key]).filter(item => typeof (item) !== 'undefined')
-  }
-
-  private createMessageString(data, keys = []) {
-    return this.createMessageArray(data, keys).join('|')
-  }
-
-  private createPayloadMessage(payload) {
+  public createPayloadMessage(payload) {
 
     const payloadKeys = [
       'merchantId', 'origPayId', 'orderNo', 'payId', 'dttm', 'payOperation', 'payMethod',
@@ -315,6 +270,29 @@ export class CSOBPaymentModule {
       'description', 'merchantData', 'customerId', 'language', 'ttlSec', 'logoVersion', 'colorSchemeVersion'
     ]))
     return payloadMessageArray.join('|')
+  }
+
+  public sign(text: string) {
+    return crypto.createSign('sha1').update(text).sign(this.config.privateKey, 'base64')
+  }
+
+  private createDttm() {
+    return moment().format('YYYYMMDDHHmmss')
+  }
+
+  private verify(text: string, signature: string) {
+    return crypto.createVerify('sha1').update(text).verify(this.config.bankPublicKey, signature, 'base64')
+  }
+
+  private createMessageArray(data, keys) {
+    if (!keys) {
+      keys = Object.keys(data)
+    }
+    return keys.map(key => data[key]).filter(item => typeof (item) !== 'undefined')
+  }
+
+  private createMessageString(data, keys = []) {
+    return this.createMessageArray(data, keys).join('|')
   }
 
   private createResultMessage(result) {

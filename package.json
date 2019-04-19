@@ -1,6 +1,6 @@
 {
   "name": "@blabu.com/csobcz_payment_gateway",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "CSOB CZ payment gateway module",
   "main": "build/index.js",
   "types": "build/index.d.ts",

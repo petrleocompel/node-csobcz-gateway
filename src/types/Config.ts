@@ -7,6 +7,6 @@ export interface Config {
   bankPublicKey?: string
   calbackUrl?: string
   merchantId?: string,
-  logging?: Logger,
+  logger: Logger,
   payloadTemplate?: Object
 }

@@ -50,8 +50,10 @@ export class CSOBPaymentModule {
           return result.body
         }
 
+        this.logger.error({ result: result.body }, 'Payment failed')
         throw new GatewayError('Payment failed', result.body)
       } else {
+        this.logger.error({ result: result.body }, 'Verification failed')
         throw new VerificationError('Verification failed')
       }
     } catch (err) {
@@ -95,12 +97,17 @@ export class CSOBPaymentModule {
               return startResult.body
             }
           } else {
+            this.logger.error({ result: startResult.body }, 'Verification failed')
             throw new VerificationError('Verification failed')
           }
+
+          this.logger.error({ result: startResult.body }, 'One click payment failed')
         }
 
+        this.logger.error({ result: result.body }, 'One click payment failed')
         throw new GatewayError('Payment failed', result.body)
       } else {
+        this.logger.error({ result: result.body }, 'Verification failed')
         throw new VerificationError('Verification failed')
       }
     } catch (err) {
@@ -145,6 +152,7 @@ export class CSOBPaymentModule {
         return result.body
       }
 
+      this.logger.error({ result: result.body }, 'Status failed')
       throw new GatewayError('Status failed', result.body)
     }
 
@@ -158,8 +166,8 @@ export class CSOBPaymentModule {
       dttm: this.createDttm()
     }
 
-    payload['signature'] = this.sign(this.createMessageString(payload))
-    const result = await superagent()
+    payload['signature'] = this.sign(this.createPayloadMessage(payload))
+    const result = await superagent
       .put(`${this.config.gateUrl}/payment/reverse`)
       .send(payload)
 
@@ -183,7 +191,7 @@ export class CSOBPaymentModule {
     }
 
     payload['signature'] = this.sign(this.createMessageString(payload))
-    const result = await superagent()
+    const result = await superagent
       .put(`${this.config.gateUrl}/payment/close`)
       .send(payload)
 
@@ -207,7 +215,7 @@ export class CSOBPaymentModule {
     }
 
     payload['signature'] = this.sign(this.createMessageString(payload))
-    const result = superagent()
+    const result = superagent
       .put(`${this.config.gateUrl}/payment/refund`)
       .send(payload)
 
@@ -229,24 +237,29 @@ export class CSOBPaymentModule {
       signature: null
     }
 
-    payload['signature'] = this.sign(this.createMessageString(payload))
+    payload['signature'] = this.sign(this.createPayloadMessage(payload))
     let result
-    if (method === 'POST') {
-      result = await superagent()
-        .post(`${this.config.gateUrl}/echo`)
-        .send(payload)
-    } else {
-      result = await superagent()
-        .post(`${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${payload.signature}`)
-        .send()
-    }
-
-    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-      if (result.body.resultCode.toString() === '0') {
-        return result
+    try {
+      if (method === 'POST') {
+        result = await superagent
+          .post(`${this.config.gateUrl}/echo`)
+          .set('Content-Type', 'application/json')
+          .send(payload)
+      } else {
+        result = await superagent
+          .get(`${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`)
+          .send()
       }
 
-      throw new GatewayError('Echo failed', result.body)
+      if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+        if (result.body.resultCode.toString() === '0') {
+          return result
+        }
+
+        throw new GatewayError('Echo failed', result.body)
+      }
+    } catch (err) {
+      console.log(err)
     }
 
     throw new VerificationError('Verification failed')
@@ -297,7 +310,7 @@ export class CSOBPaymentModule {
 
   private createResultMessage(result) {
     const resultKeys = [
-      'payId', 'dttm', 'resultCode', 'resultMessage', 'paymentStatus', 'authCode', 'merchantData'
+      'merchantId', 'payId', 'dttm', 'resultCode', 'resultMessage', 'paymentStatus', 'authCode', 'merchantData'
     ]
     return this.createMessageString(result, resultKeys)
   }

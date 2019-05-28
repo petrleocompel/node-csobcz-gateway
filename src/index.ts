@@ -111,7 +111,7 @@ export class CSOBPaymentModule {
         throw new VerificationError('Verification failed')
       }
     } catch (err) {
-      this.logger.error({ err }, 'Uknown error')
+      this.logger.error({ err }, 'Unknown error')
       throw new Error(err)
     }
   }

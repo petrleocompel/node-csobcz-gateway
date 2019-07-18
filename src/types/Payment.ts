@@ -37,7 +37,9 @@ export enum ReturnMethod {
 
 export enum Language {
   CZ = 'CZ',
-  EN = 'EN'
+  EN = 'EN',
+  ES = 'ES',
+  PL = 'PL'
 }
 
 export enum PaymentOperation {

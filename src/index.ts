@@ -50,10 +50,10 @@ export class CSOBPaymentModule {
           return result.body
         }
 
-        this.logger.error({ result: result.body }, 'Payment failed')
+        this.logger.error({ result }, 'Payment failed')
         throw new GatewayError('Payment failed', result.body)
       } else {
-        this.logger.error({ result: result.body }, 'Verification failed')
+        this.logger.error({ result }, 'Verification failed')
         throw new VerificationError('Verification failed')
       }
     } catch (err) {
@@ -97,17 +97,17 @@ export class CSOBPaymentModule {
               return startResult.body
             }
           } else {
-            this.logger.error({ result: startResult.body }, 'Verification failed')
+            this.logger.error({ result: startResult }, 'Verification failed')
             throw new VerificationError('Verification failed')
           }
 
-          this.logger.error({ result: startResult.body }, 'One click payment failed')
+          this.logger.error({ result: startResult }, 'One click payment failed')
         }
 
-        this.logger.error({ result: result.body }, 'One click payment failed')
+        this.logger.error({ result }, 'One click payment failed')
         throw new GatewayError('Payment failed', result.body)
       } else {
-        this.logger.error({ result: result.body }, 'Verification failed')
+        this.logger.error({ result }, 'Verification failed')
         throw new VerificationError('Verification failed')
       }
     } catch (err) {
@@ -152,7 +152,7 @@ export class CSOBPaymentModule {
         return result.body
       }
 
-      this.logger.error({ result: result.body }, 'Status failed')
+      this.logger.error({ result }, 'Status failed')
       throw new GatewayError('Status failed', result.body)
     }
 

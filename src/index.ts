@@ -182,15 +182,15 @@ export class CSOBPaymentModule {
     throw new VerificationError('Verification failed')
   }
 
-  public async close(id: string, totalAmount?: number): Promise<PaymentResult> {
+  public async close(id: string, amount: number): Promise<PaymentResult> {
     const payload = {
       merchantId: this.config.merchantId,
       payId: id,
       dttm: this.createDttm(),
-      ...(typeof (totalAmount) === 'number' ? {totalAmount} : {})
+      amount
     }
 
-    payload['signature'] = this.sign(this.createMessageString(payload, null))
+    payload['signature'] = this.sign(this.createMessageString(payload))
     const result = await superagent
       .put(`${this.config.gateUrl}/payment/close`)
       .send(payload)

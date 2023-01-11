@@ -286,7 +286,7 @@ export class CSOBPaymentModule {
   }
 
   public sign(text: string) {
-    return crypto.createSign('sha1').update(text).sign(this.config.privateKey, 'base64')
+    return crypto.createSign('sha-256').update(text).sign(this.config.privateKey, 'base64')
   }
 
   private createDttm() {
@@ -294,7 +294,7 @@ export class CSOBPaymentModule {
   }
 
   private verify(text: string, signature: string) {
-    return crypto.createVerify('sha1').update(text).verify(this.config.bankPublicKey, signature, 'base64')
+    return crypto.createVerify('sha-256').update(text).verify(this.config.bankPublicKey, signature, 'base64')
   }
 
   private createMessageArray(data, keys) {

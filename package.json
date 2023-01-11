@@ -8,6 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 0",
     "lint": "tslint src/**/*.ts",
     "lint:fix": "tslint --fix 'src/**/*.ts'",
+	"dev": "tsc -w",
     "build": "tsc"
   },
   "author": "",

@@ -6,7 +6,10 @@
 Module for ČSOB CZ payment gateway
 
 ## Instalation
-npm i csobcz_payment_gateway
+
+```sh
+npm install @luchalupa/csobcz_payment_gateway
+```
 
 ## Configuration
 ### Using environment variables

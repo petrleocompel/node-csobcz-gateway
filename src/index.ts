@@ -5,22 +5,22 @@ import * as crypto from 'crypto'
 import * as superagent from 'superagent'
 
 import {
-  Currency,
-  InitPayload,
-  InputPayload,
-  Language,
-  OneClickPaymentInput,
-  PaymentMethod,
-  PaymentOperation,
-  PaymentResult,
-  PaymentStatus,
-  ResultCode
+	Currency,
+	InitPayload,
+	InputPayload,
+	Language,
+	OneClickPaymentInput,
+	PaymentMethod,
+	PaymentOperation,
+	PaymentResult,
+	PaymentStatus,
+	ResultCode
 } from './types/Payment'
 
+import moment from 'moment'
 import { Config } from './types/Config'
 import GatewayError from './types/GatewayError'
 import VerificationError from './types/VerificationError'
-import moment from 'moment'
 
 export { Currency, Language, ResultCode, PaymentStatus, GatewayError, VerificationError }
 export class CSOBPaymentModule {

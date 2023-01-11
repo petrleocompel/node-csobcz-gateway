@@ -90,6 +90,5 @@ export interface InitPayload {
   returnUrl: string,
   returnMethod: ReturnMethod,
   cart: Item[],
-  description: string,
   language: Language,
 }

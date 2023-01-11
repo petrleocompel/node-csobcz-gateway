@@ -1,5 +1,5 @@
 {
-  "name": "@blabu.com/csobcz_payment_gateway",
+  "name": "@luchalupa/csobcz_payment_gateway",
   "version": "0.6.0",
   "description": "CSOB CZ payment gateway module",
   "main": "build/index.js",
@@ -8,7 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 0",
     "lint": "tslint src/**/*.ts",
     "lint:fix": "tslint --fix 'src/**/*.ts'",
-	"dev": "tsc -w",
+    "dev": "tsc -w",
     "build": "tsc"
   },
   "author": "",

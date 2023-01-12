@@ -1,4 +1,5 @@
-# ČSOB CZ payment modules
+# ČSOB CZ payment modules [![npm](https://img.shields.io/npm/v/@luchalupa/csobcz_payment_gateway.svg)](https://www.npmjs.com/package/@luchalupa/csobcz_payment_gateway) ![npm type definitions](https://img.shields.io/npm/types/@luchalupa/csobcz_payment_gateway)
+
 
 [Source](https://github.com/mival/csob_gateway) |
 [Gateway documentation](https://github.com/csob/paymentgateway)

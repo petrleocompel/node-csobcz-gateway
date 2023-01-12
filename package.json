@@ -35,5 +35,8 @@
   "bugs": {
     "url": "https://github.com/blabu-com/node-csobcz-gateway/issues"
   },
+  "files": [
+    "/build/"
+  ],
   "homepage": "https://github.com/blabu-com/node-csobcz-gateway#readme"
 }

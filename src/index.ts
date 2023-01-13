@@ -41,6 +41,7 @@ export class CSOBPaymentModule {
 
   async init(payload: InitPayload): Promise<PaymentResult> {
     try {
+      payload['dttm'] = this.createDttm()
       payload['signature'] = this.sign(this.createPayloadMessage(payload))
       const result = await superagent
         .post(`${this.config.gateUrl}/payment/init`)

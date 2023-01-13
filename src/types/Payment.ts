@@ -27,7 +27,14 @@ export enum PaymentStatus {
 
 export enum Currency {
   CZK = 'CZK',
-  USD = 'USD'
+  USD = 'USD',
+  EUR = 'EUR',
+  GBP = 'GBP',
+  HUF = 'HUF',
+  PLN = 'PLN',
+  RON = 'RON',
+  NOK = 'NOK',
+  SEK = 'SEK',
 }
 
 export enum ReturnMethod {
@@ -44,11 +51,13 @@ export enum Language {
 
 export enum PaymentOperation {
   PAYMENT = 'payment',
-  ONE_CLICK_PAYMENT = 'oneclickPayment'
+  ONE_CLICK_PAYMENT = 'oneclickPayment',
+  CUSTOM_PAYMENT = 'customPayment'
 }
 
 export enum PaymentMethod {
-  CARD = 'card'
+  CARD = 'card',
+  CARD_LVP = 'card#LVP'
 }
 
 export interface PaymentResult {
@@ -79,7 +88,6 @@ export interface InputPayload {
 }
 
 export interface InitPayload {
-  merchantId: string,
   orderNo: string,
   payOperation?: PaymentOperation,
   payMethod?: PaymentMethod,

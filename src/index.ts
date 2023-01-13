@@ -39,8 +39,10 @@ export class CSOBPaymentModule {
     }
   }
 
-  async init(payload: InitPayload): Promise<PaymentResult> {
+  async init(input: InitPayload): Promise<PaymentResult> {
     try {
+      const payload = input
+      payload['merchantId'] = this.config.merchantId
       payload['dttm'] = this.createDttm()
       payload['signature'] = this.sign(this.createPayloadMessage(payload))
       const result = await superagent

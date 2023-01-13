@@ -43,10 +43,24 @@ export enum ReturnMethod {
 }
 
 export enum Language {
-  CZ = 'CZ',
+  CS = 'CS',
   EN = 'EN',
+  DE = 'DE',
+  FR = 'FR',
+  HU = 'HU',
+  IT = 'IT',
+  JA = 'JA',
+  PL = 'PL',
+  PT = 'PT',
+  RO = 'RO',
+  RU = 'RU',
+  SK = 'SK',
   ES = 'ES',
-  PL = 'PL'
+  TR = 'TR',
+  VI = 'VI',
+  HR = 'HR',
+  SL = 'SL',
+  SV = 'SV',
 }
 
 export enum PaymentOperation {

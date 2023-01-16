@@ -133,3 +133,7 @@ export interface InitPayload extends CommonInitPayload {
 export interface GooglePayInitPayload extends CommonInitPayload {
 	clientIp: string,
 }
+
+export interface ApplePayInitPayload extends CommonInitPayload {
+	clientIp: string,
+}

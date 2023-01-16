@@ -5,6 +5,7 @@ import * as crypto from 'crypto'
 import * as superagent from 'superagent'
 
 import {
+	ApplePayInitPayload,
 	Currency,
 	GooglePayInitPayload,
 	InitPayload,
@@ -40,12 +41,12 @@ export class CSOBPaymentModule {
 		}
 	}
 
-	async commonInit(input, initUrlPath: string): Promise<PaymentResult> {
+	async commonInit(payload, initUrlPath: string): Promise<PaymentResult> {
 		try {
-			const payload = input
-			payload['merchantId'] = this.config.merchantId
-			payload['dttm'] = this.createDttm()
-			payload['signature'] = this.sign(this.createPayloadMessage(payload))
+			console.log('=================================================')
+			console.log('payload', payload)
+			console.log('=================================================')
+
 			const result = await superagent
 				.post(`${this.config.gateUrl}${initUrlPath}`)
 				.send(payload)
@@ -67,11 +68,29 @@ export class CSOBPaymentModule {
 	}
 
 	async init(input: InitPayload): Promise<PaymentResult> {
+		const payload = input
+		payload['merchantId'] = this.config.merchantId
+		payload['dttm'] = this.createDttm()
+		payload['signature'] = this.sign(this.createPayloadMessage(payload))
 		return this.commonInit(input, '/payment/init')
 	}
 
 	async googlePayInit(input: GooglePayInitPayload): Promise<PaymentResult> {
+		const payload = input
+		payload['merchantId'] = this.config.merchantId
+		payload['dttm'] = this.createDttm()
+		payload['signature'] = this.sign(this.createPayloadMessage(payload))
+		payload['payload'] = '@TODO'
 		return this.commonInit(input, '/googlepay/init')
+	}
+
+	async applePayInit(input: ApplePayInitPayload): Promise<PaymentResult> {
+		const payload = input
+		payload['merchantId'] = this.config.merchantId
+		payload['dttm'] = this.createDttm()
+		payload['signature'] = this.sign(this.createPayloadMessage(payload))
+		payload['payload'] = '@TODO'
+		return this.commonInit(input, '/applepay/init')
 	}
 
 	async oneClickPayment(input: OneClickPaymentInput): Promise<PaymentResult> {
@@ -242,7 +261,7 @@ export class CSOBPaymentModule {
 		throw new VerificationError('Verification failed')
 	}
 
-	public async echo(method = 'POST') {
+	public async echo(method = 'POST', urlPath: string = '/echo') {
 		const payload = {
 			merchantId: this.config.merchantId,
 			dttm: this.createDttm(),
@@ -254,12 +273,12 @@ export class CSOBPaymentModule {
 		try {
 			if (method === 'POST') {
 				result = await superagent
-					.post(`${this.config.gateUrl}/echo`)
+					.post(`${this.config.gateUrl}${urlPath}`)
 					.set('Content-Type', 'application/json')
 					.send(payload)
 			} else {
 				result = await superagent
-					.get(`${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`)
+					.get(`${this.config.gateUrl}${urlPath}/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`)
 					.send()
 			}
 

@@ -1,13 +1,13 @@
 export interface Item {
-  name: string
-  quantity: number
-  amount: number
-  description: string
+	name: string
+	quantity: number
+	amount: number
+	description: string
 }
 
 export interface Order {
-  id: string
-  description: string
-  items: Item[]
-  merchantData: Buffer
+	id: string
+	description: string
+	items: Item[]
+	merchantData: Buffer
 }

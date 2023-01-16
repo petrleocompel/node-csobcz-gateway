@@ -25,305 +25,305 @@ import VerificationError from './types/VerificationError'
 
 export { Currency, Language, ResultCode, PaymentStatus, GatewayError, VerificationError }
 export class CSOBPaymentModule {
-  private logger: Logger
-  private config: Config
+	private logger: Logger
+	private config: Config
 
-  constructor(config: Config) {
-    this.logger = config.logger
-    this.config = config
+	constructor(config: Config) {
+		this.logger = config.logger
+		this.config = config
 
-    this.config.payloadTemplate = {
-      merchantId: this.config.merchantId,
-      payMethod: 'card',
-      returnUrl: this.config.calbackUrl,
-      returnMethod: 'POST'
-    }
-  }
+		this.config.payloadTemplate = {
+			merchantId: this.config.merchantId,
+			payMethod: 'card',
+			returnUrl: this.config.calbackUrl,
+			returnMethod: 'POST'
+		}
+	}
 
-  async commonInit(input, initUrlPath: string): Promise<PaymentResult> {
-    try {
-      const payload = input
-      payload['merchantId'] = this.config.merchantId
-      payload['dttm'] = this.createDttm()
-      payload['signature'] = this.sign(this.createPayloadMessage(payload))
-      const result = await superagent
-        .post(`${this.config.gateUrl}${initUrlPath}`)
-        .send(payload)
-      if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-        if (result.body.resultCode.toString() === '0') {
-        return result.body
-        }
-    
-        this.logger.error({ result }, 'Payment failed')
-        throw new GatewayError('Payment failed', result.body)
-      } else {
-        this.logger.error({ result }, 'Verification failed')
-        throw new VerificationError('Verification failed')
-      }
-    } catch (err) {
-      this.logger.error({ err }, 'Uknown error')
-      throw err
-    }
-  }
+	async commonInit(input, initUrlPath: string): Promise<PaymentResult> {
+		try {
+			const payload = input
+			payload['merchantId'] = this.config.merchantId
+			payload['dttm'] = this.createDttm()
+			payload['signature'] = this.sign(this.createPayloadMessage(payload))
+			const result = await superagent
+				.post(`${this.config.gateUrl}${initUrlPath}`)
+				.send(payload)
+			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+				if (result.body.resultCode.toString() === '0') {
+					return result.body
+				}
 
-  async init(input: InitPayload): Promise<PaymentResult> {
-    return this.commonInit(input, '/payment/init')
-  }
+				this.logger.error({ result }, 'Payment failed')
+				throw new GatewayError('Payment failed', result.body)
+			} else {
+				this.logger.error({ result }, 'Verification failed')
+				throw new VerificationError('Verification failed')
+			}
+		} catch (err) {
+			this.logger.error({ err }, 'Uknown error')
+			throw err
+		}
+	}
 
-  async googlePayInit(input: GooglePayInitPayload): Promise<PaymentResult> {
-	return this.commonInit(input, '/googlepay/init')
-  }
+	async init(input: InitPayload): Promise<PaymentResult> {
+		return this.commonInit(input, '/payment/init')
+	}
 
-  async oneClickPayment (input: OneClickPaymentInput): Promise<PaymentResult> {
-    const payload = {
-      merchantId: this.config.merchantId,
-      origPayId: input.templatePaymentId,
-      orderNo: input.orderNumber,
-      dttm: this.createDttm(),
-      totalAmount: input.amount,
-      currency: input.currency
-    }
-    payload['signature'] = this.sign(this.createPayloadMessage(payload))
-    let result
-    try {
-      result = await superagent
-        .post(`${this.config.gateUrl}/payment/oneclick/init`)
-        .send(payload)
+	async googlePayInit(input: GooglePayInitPayload): Promise<PaymentResult> {
+		return this.commonInit(input, '/googlepay/init')
+	}
 
-      if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-        if (result.body.resultCode.toString() === '0') {
-          const startPayload = {
-            merchantId: this.config.merchantId,
-            payId: result.body.payId,
-            dttm: this.createDttm()
-          }
+	async oneClickPayment(input: OneClickPaymentInput): Promise<PaymentResult> {
+		const payload = {
+			merchantId: this.config.merchantId,
+			origPayId: input.templatePaymentId,
+			orderNo: input.orderNumber,
+			dttm: this.createDttm(),
+			totalAmount: input.amount,
+			currency: input.currency
+		}
+		payload['signature'] = this.sign(this.createPayloadMessage(payload))
+		let result
+		try {
+			result = await superagent
+				.post(`${this.config.gateUrl}/payment/oneclick/init`)
+				.send(payload)
 
-          let startResult
-          startPayload['signature'] = this.sign(this.createPayloadMessage(startPayload))
-          startResult = await superagent
-            .post(`${this.config.gateUrl}/payment/oneclick/start`)
-            .send(startPayload)
+			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+				if (result.body.resultCode.toString() === '0') {
+					const startPayload = {
+						merchantId: this.config.merchantId,
+						payId: result.body.payId,
+						dttm: this.createDttm()
+					}
 
-          if (this.verify(this.createResultMessage(startResult.body), startResult.body.signature)) {
-            if (startResult.body.resultCode.toString() === '0') {
-              return startResult.body
-            }
-          } else {
-            this.logger.error({ result: startResult }, 'Verification failed')
-            throw new VerificationError('Verification failed')
-          }
+					let startResult
+					startPayload['signature'] = this.sign(this.createPayloadMessage(startPayload))
+					startResult = await superagent
+						.post(`${this.config.gateUrl}/payment/oneclick/start`)
+						.send(startPayload)
 
-          this.logger.error({ result: startResult }, 'One click payment failed')
-        }
+					if (this.verify(this.createResultMessage(startResult.body), startResult.body.signature)) {
+						if (startResult.body.resultCode.toString() === '0') {
+							return startResult.body
+						}
+					} else {
+						this.logger.error({ result: startResult }, 'Verification failed')
+						throw new VerificationError('Verification failed')
+					}
 
-        this.logger.error({ result }, 'One click payment failed')
-        throw new GatewayError('Payment failed', result.body)
-      } else {
-        this.logger.error({ result }, 'Verification failed')
-        throw new VerificationError('Verification failed')
-      }
-    } catch (err) {
-      this.logger.error({ err }, 'Unknown error')
-      throw new Error(err)
-    }
-  }
+					this.logger.error({ result: startResult }, 'One click payment failed')
+				}
 
-  public createPaymentPayload (payload: InputPayload, oneClick: boolean): any {
-    return {
-      ...this.config.payloadTemplate,
-      dttm: this.createDttm(),
-      payOperation: oneClick ? PaymentOperation.ONE_CLICK_PAYMENT : PaymentOperation.PAYMENT,
-      payMethod: PaymentMethod.CARD,
-      returnMethod: 'GET',
-      closePayment: true,
-      ...payload
-    }
-  }
+				this.logger.error({ result }, 'One click payment failed')
+				throw new GatewayError('Payment failed', result.body)
+			} else {
+				this.logger.error({ result }, 'Verification failed')
+				throw new VerificationError('Verification failed')
+			}
+		} catch (err) {
+			this.logger.error({ err }, 'Unknown error')
+			throw new Error(err)
+		}
+	}
 
-  getRedirectUrl(id: string) {
-    const dttm = this.createDttm()
+	public createPaymentPayload(payload: InputPayload, oneClick: boolean): any {
+		return {
+			...this.config.payloadTemplate,
+			dttm: this.createDttm(),
+			payOperation: oneClick ? PaymentOperation.ONE_CLICK_PAYMENT : PaymentOperation.PAYMENT,
+			payMethod: PaymentMethod.CARD,
+			returnMethod: 'GET',
+			closePayment: true,
+			...payload
+		}
+	}
 
-    const signature = this.sign(`${this.config.merchantId}|${id}|${dttm}`)
-    const url = `${this.config.gateUrl}/payment/process/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`
+	getRedirectUrl(id: string) {
+		const dttm = this.createDttm()
 
-    return url
-  }
+		const signature = this.sign(`${this.config.merchantId}|${id}|${dttm}`)
+		const url = `${this.config.gateUrl}/payment/process/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`
 
-  async status(id: string) {
-    const dttm = this.createDttm()
-    const signature = this.sign(`${this.config.merchantId}|${id}|${dttm}`)
+		return url
+	}
 
-    const url = `${this.config.gateUrl}/payment/status/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`
-    const result = await superagent
-      .get(url)
-      .send()
+	async status(id: string) {
+		const dttm = this.createDttm()
+		const signature = this.sign(`${this.config.merchantId}|${id}|${dttm}`)
 
-    const message = this.createResultMessage(result.body)
-    if (this.verify(message, result.body.signature)) {
-      if (result.body.resultCode.toString() === '0') {
-        return result.body
-      }
+		const url = `${this.config.gateUrl}/payment/status/${this.config.merchantId}/${id}/${dttm}/${encodeURIComponent(signature)}`
+		const result = await superagent
+			.get(url)
+			.send()
 
-      this.logger.error({ result }, 'Status failed')
-      throw new GatewayError('Status failed', result.body)
-    }
+		const message = this.createResultMessage(result.body)
+		if (this.verify(message, result.body.signature)) {
+			if (result.body.resultCode.toString() === '0') {
+				return result.body
+			}
 
-    throw new VerificationError('Verification failed')
-  }
+			this.logger.error({ result }, 'Status failed')
+			throw new GatewayError('Status failed', result.body)
+		}
 
-  public async reverse(id: string): Promise<PaymentResult> {
-    const payload = {
-      merchantId: this.config.merchantId,
-      payId: id,
-      dttm: this.createDttm()
-    }
+		throw new VerificationError('Verification failed')
+	}
 
-    payload['signature'] = this.sign(this.createPayloadMessage(payload))
-    const result = await superagent
-      .put(`${this.config.gateUrl}/payment/reverse`)
-      .send(payload)
+	public async reverse(id: string): Promise<PaymentResult> {
+		const payload = {
+			merchantId: this.config.merchantId,
+			payId: id,
+			dttm: this.createDttm()
+		}
 
-    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-      if (result.body.resultCode.toString() === '0') {
-        return result.body
-      }
+		payload['signature'] = this.sign(this.createPayloadMessage(payload))
+		const result = await superagent
+			.put(`${this.config.gateUrl}/payment/reverse`)
+			.send(payload)
 
-      throw new GatewayError('reverse failed', result.body)
-    }
+		if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+			if (result.body.resultCode.toString() === '0') {
+				return result.body
+			}
 
-    throw new VerificationError('Verification failed')
-  }
+			throw new GatewayError('reverse failed', result.body)
+		}
 
-  public async close(id: string, totalAmount?: number): Promise<PaymentResult> {
-    const payload = {
-      merchantId: this.config.merchantId,
-      payId: id,
-      dttm: this.createDttm(),
-      ...(typeof (totalAmount) === 'number' ? {totalAmount} : {})
-    }
+		throw new VerificationError('Verification failed')
+	}
 
-    payload['signature'] = this.sign(this.createMessageString(payload, null))
-    const result = await superagent
-      .put(`${this.config.gateUrl}/payment/close`)
-      .send(payload)
+	public async close(id: string, totalAmount?: number): Promise<PaymentResult> {
+		const payload = {
+			merchantId: this.config.merchantId,
+			payId: id,
+			dttm: this.createDttm(),
+			...(typeof (totalAmount) === 'number' ? { totalAmount } : {})
+		}
 
-    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-      if (result.body.resultCode.toString() === '0') {
-        return result
-      }
+		payload['signature'] = this.sign(this.createMessageString(payload, null))
+		const result = await superagent
+			.put(`${this.config.gateUrl}/payment/close`)
+			.send(payload)
 
-      throw new GatewayError('Close failed', result.body)
-    }
+		if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+			if (result.body.resultCode.toString() === '0') {
+				return result
+			}
 
-    throw new VerificationError('Verification failed')
-  }
+			throw new GatewayError('Close failed', result.body)
+		}
 
-  public async refund(id: string, amount: number) {
-    const payload = {
-      merchantId: this.config.merchantId,
-      payId: id,
-      dttm: this.createDttm(),
-      amount
-    }
+		throw new VerificationError('Verification failed')
+	}
 
-    payload['signature'] = this.sign(this.createMessageString(payload))
-    const result = superagent
-      .put(`${this.config.gateUrl}/payment/refund`)
-      .send(payload)
+	public async refund(id: string, amount: number) {
+		const payload = {
+			merchantId: this.config.merchantId,
+			payId: id,
+			dttm: this.createDttm(),
+			amount
+		}
 
-    if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-      if (result.body.resultCode.toString() === '0') {
-        return result
-      }
+		payload['signature'] = this.sign(this.createMessageString(payload))
+		const result = superagent
+			.put(`${this.config.gateUrl}/payment/refund`)
+			.send(payload)
 
-      throw new GatewayError('Refund failed', result.body)
-    }
+		if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+			if (result.body.resultCode.toString() === '0') {
+				return result
+			}
 
-    throw new VerificationError('Verification failed')
-  }
+			throw new GatewayError('Refund failed', result.body)
+		}
 
-  public async echo(method = 'POST') {
-    const payload = {
-      merchantId: this.config.merchantId,
-      dttm: this.createDttm(),
-      signature: null
-    }
+		throw new VerificationError('Verification failed')
+	}
 
-    payload['signature'] = this.sign(this.createPayloadMessage(payload))
-    let result
-    try {
-      if (method === 'POST') {
-        result = await superagent
-          .post(`${this.config.gateUrl}/echo`)
-          .set('Content-Type', 'application/json')
-          .send(payload)
-      } else {
-        result = await superagent
-          .get(`${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`)
-          .send()
-      }
+	public async echo(method = 'POST') {
+		const payload = {
+			merchantId: this.config.merchantId,
+			dttm: this.createDttm(),
+			signature: null
+		}
 
-      if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-        if (result.body.resultCode.toString() === '0') {
-          return result
-        }
+		payload['signature'] = this.sign(this.createPayloadMessage(payload))
+		let result
+		try {
+			if (method === 'POST') {
+				result = await superagent
+					.post(`${this.config.gateUrl}/echo`)
+					.set('Content-Type', 'application/json')
+					.send(payload)
+			} else {
+				result = await superagent
+					.get(`${this.config.gateUrl}/echo/${payload.merchantId}/${payload.dttm}/${encodeURIComponent(payload.signature)}`)
+					.send()
+			}
 
-        throw new GatewayError('Echo failed', result.body)
-      }
-    } catch (err) {
-      console.log(err)
-    }
+			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+				if (result.body.resultCode.toString() === '0') {
+					return result
+				}
 
-    throw new VerificationError('Verification failed')
-  }
+				throw new GatewayError('Echo failed', result.body)
+			}
+		} catch (err) {
+			console.log(err)
+		}
 
-  public createPayloadMessage(payload) {
+		throw new VerificationError('Verification failed')
+	}
 
-    const payloadKeys = [
-      'merchantId', 'origPayId', 'orderNo', 'payId', 'dttm', 'payOperation', 'payMethod',
-      'totalAmount', 'currency', 'closePayment', 'returnUrl', 'returnMethod'
-    ]
-    const cartItemKeys = [ 'name', 'quantity', 'amount', 'description' ]
-    let payloadMessageArray = this.createMessageArray(payload, payloadKeys)
-    if (payload.cart) {
-      payload.cart.forEach(cartItem => {
-        payloadMessageArray = payloadMessageArray.concat(this.createMessageArray(cartItem, cartItemKeys))
-      })
-    }
+	public createPayloadMessage(payload) {
 
-    payloadMessageArray = payloadMessageArray.concat(this.createMessageArray(payload, [
-      'description', 'merchantData', 'customerId', 'language', 'ttlSec', 'logoVersion', 'colorSchemeVersion'
-    ]))
-    return payloadMessageArray.join('|')
-  }
+		const payloadKeys = [
+			'merchantId', 'origPayId', 'orderNo', 'payId', 'dttm', 'payOperation', 'payMethod',
+			'totalAmount', 'currency', 'closePayment', 'returnUrl', 'returnMethod'
+		]
+		const cartItemKeys = ['name', 'quantity', 'amount', 'description']
+		let payloadMessageArray = this.createMessageArray(payload, payloadKeys)
+		if (payload.cart) {
+			payload.cart.forEach(cartItem => {
+				payloadMessageArray = payloadMessageArray.concat(this.createMessageArray(cartItem, cartItemKeys))
+			})
+		}
 
-  public sign(text: string) {
-    return crypto.createSign('sha256').update(text).sign(this.config.privateKey, 'base64')
-  }
+		payloadMessageArray = payloadMessageArray.concat(this.createMessageArray(payload, [
+			'description', 'merchantData', 'customerId', 'language', 'ttlSec', 'logoVersion', 'colorSchemeVersion'
+		]))
+		return payloadMessageArray.join('|')
+	}
 
-  private createDttm() {
-    return moment().format('YYYYMMDDHHmmss')
-  }
+	public sign(text: string) {
+		return crypto.createSign('sha256').update(text).sign(this.config.privateKey, 'base64')
+	}
 
-  private verify(text: string, signature: string) {
-    return crypto.createVerify('sha256').update(text).verify(this.config.bankPublicKey, signature, 'base64')
-  }
+	private createDttm() {
+		return moment().format('YYYYMMDDHHmmss')
+	}
 
-  private createMessageArray(data, keys) {
-    if (!keys) {
-      keys = Object.keys(data)
-    }
-    return keys.map(key => data[key]).filter(item => typeof (item) !== 'undefined')
-  }
+	private verify(text: string, signature: string) {
+		return crypto.createVerify('sha256').update(text).verify(this.config.bankPublicKey, signature, 'base64')
+	}
 
-  private createMessageString(data, keys = []) {
-    return this.createMessageArray(data, keys).join('|')
-  }
+	private createMessageArray(data, keys) {
+		if (!keys) {
+			keys = Object.keys(data)
+		}
+		return keys.map(key => data[key]).filter(item => typeof (item) !== 'undefined')
+	}
 
-  private createResultMessage(result) {
-    const resultKeys = [
-      'merchantId', 'payId', 'dttm', 'resultCode', 'resultMessage', 'paymentStatus', 'authCode', 'merchantData'
-    ]
-    return this.createMessageString(result, resultKeys)
-  }
+	private createMessageString(data, keys = []) {
+		return this.createMessageArray(data, keys).join('|')
+	}
+
+	private createResultMessage(result) {
+		const resultKeys = [
+			'merchantId', 'payId', 'dttm', 'resultCode', 'resultMessage', 'paymentStatus', 'authCode', 'merchantData'
+		]
+		return this.createMessageString(result, resultKeys)
+	}
 }

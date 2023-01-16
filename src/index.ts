@@ -6,6 +6,7 @@ import * as superagent from 'superagent'
 
 import {
 	Currency,
+	GooglePayInitPayload,
 	InitPayload,
 	InputPayload,
 	Language,
@@ -39,20 +40,20 @@ export class CSOBPaymentModule {
     }
   }
 
-  async init(input: InitPayload): Promise<PaymentResult> {
+  async commonInit(input, initUrlPath: string): Promise<PaymentResult> {
     try {
       const payload = input
       payload['merchantId'] = this.config.merchantId
       payload['dttm'] = this.createDttm()
       payload['signature'] = this.sign(this.createPayloadMessage(payload))
       const result = await superagent
-        .post(`${this.config.gateUrl}/payment/init`)
+        .post(`${this.config.gateUrl}${initUrlPath}`)
         .send(payload)
       if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
         if (result.body.resultCode.toString() === '0') {
-          return result.body
+        return result.body
         }
-
+    
         this.logger.error({ result }, 'Payment failed')
         throw new GatewayError('Payment failed', result.body)
       } else {
@@ -63,6 +64,14 @@ export class CSOBPaymentModule {
       this.logger.error({ err }, 'Uknown error')
       throw err
     }
+  }
+
+  async init(input: InitPayload): Promise<PaymentResult> {
+    return this.commonInit(input, '/payment/init')
+  }
+
+  async googlePayInit(input: GooglePayInitPayload): Promise<PaymentResult> {
+	return this.commonInit(input, '/googlepay/init')
   }
 
   async oneClickPayment (input: OneClickPaymentInput): Promise<PaymentResult> {

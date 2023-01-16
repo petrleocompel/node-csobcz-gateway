@@ -101,16 +101,35 @@ export interface InputPayload {
   origPayId?: string
 }
 
-export interface InitPayload {
+interface CommonInitPayload {
   orderNo: string,
-  payOperation?: PaymentOperation,
-  payMethod?: PaymentMethod,
   totalAmount: number,
   currency: Currency,
   closePayment?: boolean,
-  customerId?: string,
   returnUrl: string,
   returnMethod: ReturnMethod,
+
+  // @TODO customer
+
+  order?: {
+    type?: 'purchase' | 'balance' | 'prepaid' | 'cash' | 'check',
+    availability?: 'now' | 'preorder',
+    delivery?: 'shipping' | 'shipping_verified' | 'instore' | 'digital' | 'ticket' | 'other',
+    deliveryMode?: 0 | 1 | 2 | 3,
+    deliveryEmail?: string,
+	// @TODO add more fields
+  }
+
+}
+
+export interface InitPayload extends CommonInitPayload {
+  payOperation?: PaymentOperation,
+  payMethod?: PaymentMethod,
+  customerId?: string,
   cart: Item[],
   language: Language,
+}
+
+export interface GooglePayInitPayload extends CommonInitPayload {
+  clientIp: string,
 }

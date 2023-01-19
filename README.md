@@ -58,6 +58,8 @@ Attribute ```logging``` should be ```boolean``` or ```function``` used for debug
 ## Available methods
 * ```status(string payId)``` - returns payment status
 * ```init(json payload)``` - payment init
+* ```googlePayInit(json payload)``` - GooglePay payment init (not fully implemented)
+* ```applePayInit(json payload)``` - ApplePay payment init (not fully implemented)
 * ```reverse(string payId)``` - reverse payment with given payId
 * ```close(string payId)``` - close payment with given payId
 * ```refund(string payId, int amount)``` - refund payment with given payId, if

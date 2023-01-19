@@ -1,6 +1,6 @@
 {
   "name": "@luchalupa/csobcz_payment_gateway",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "CSOB CZ payment gateway module",
   "main": "build/index.js",
   "types": "build/index.d.ts",

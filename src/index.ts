@@ -43,10 +43,6 @@ export class CSOBPaymentModule {
 
 	async commonInit(payload, initUrlPath: string): Promise<PaymentResult> {
 		try {
-			console.log('=================================================')
-			console.log('payload', payload)
-			console.log('=================================================')
-
 			const result = await superagent
 				.post(`${this.config.gateUrl}${initUrlPath}`)
 				.send(payload)

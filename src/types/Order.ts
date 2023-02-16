@@ -2,7 +2,7 @@ export interface Item {
 	name: string
 	quantity: number
 	amount: number
-	description: string
+	description?: string
 }
 
 export interface Order {

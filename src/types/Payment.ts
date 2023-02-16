@@ -1,4 +1,5 @@
-import { Item } from './Order'
+import { Customer } from './Customer'
+import { Item, Order } from './Order'
 
 export enum ResultCode {
 	OK = 0,
@@ -108,18 +109,10 @@ interface CommonInitPayload {
 	closePayment?: boolean,
 	returnUrl: string,
 	returnMethod: ReturnMethod,
-
-	// @TODO customer
-
-	order?: {
-		type?: 'purchase' | 'balance' | 'prepaid' | 'cash' | 'check',
-		availability?: 'now' | 'preorder',
-		delivery?: 'shipping' | 'shipping_verified' | 'instore' | 'digital' | 'ticket' | 'other',
-		deliveryMode?: 0 | 1 | 2 | 3,
-		deliveryEmail?: string,
-		// @TODO add more fields
-	}
-
+	customer?: Customer
+	order?: Order
+	merchantData?: string
+	ttlSec?: number,
 }
 
 export interface InitPayload extends CommonInitPayload {
@@ -128,12 +121,19 @@ export interface InitPayload extends CommonInitPayload {
 	customerId?: string,
 	cart: Item[],
 	language: Language,
+	logoVersion?: number,
+	colorSchemeVersion?: number,
+	customExpiry?: number,
 }
 
 export interface GooglePayInitPayload extends CommonInitPayload {
 	clientIp: string,
+	payload: string, // JSON string
+	sdkUsed?: string,
 }
 
 export interface ApplePayInitPayload extends CommonInitPayload {
 	clientIp: string,
+	payload: string, // JSON string
+	sdkUsed?: string,
 }

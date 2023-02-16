@@ -257,7 +257,14 @@ export class CSOBPaymentModule {
 		throw new VerificationError('Verification failed')
 	}
 
-	public async echo(method = 'POST', urlPath: string = '/echo') {
+	public async echo(method = 'POST', type?: "googlepay" | "applepay") {
+		const urlPaths = {
+			default: "/echo",
+			googlepay: "/googlepay/echo",
+			applepay: "/applepay/echo",
+		}
+		const urlPath = urlPaths[type] || urlPaths.default
+
 		const payload = {
 			merchantId: this.config.merchantId,
 			dttm: this.createDttm(),

@@ -1,4 +1,4 @@
-import { Currency } from "./Payment"
+import { Currency } from './Payment';
 
 export interface Item {
 	name: string
@@ -8,11 +8,11 @@ export interface Item {
 }
 
 export interface Order {
-	type?: 'purchase' | 'balance' | 'prepaid' | 'cash' | 'check',
-	availability?: 'now' | 'preorder',
-	delivery?: 'shipping' | 'shipping_verified' | 'instore' | 'digital' | 'ticket' | 'other',
-	deliveryMode?: 0 | 1 | 2 | 3,
-	deliveryEmail?: string,
+	type?: 'purchase' | 'balance' | 'prepaid' | 'cash' | 'check'
+	availability?: 'now' | 'preorder'
+	delivery?: 'shipping' | 'shipping_verified' | 'instore' | 'digital' | 'ticket' | 'other'
+	deliveryMode?: 0 | 1 | 2 | 3
+	deliveryEmail?: string
 	nameMatch?: boolean
 	addressMatch?: boolean
 	billing?: Address

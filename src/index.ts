@@ -4,27 +4,14 @@ import * as Logger from 'bunyan'
 import * as crypto from 'crypto'
 import * as superagent from 'superagent'
 
-import {
-	ApplePayInitPayload,
-	Currency,
-	GooglePayInitPayload,
-	InitPayload,
-	InputPayload,
-	Language,
-	OneClickPaymentInput,
-	PaymentMethod,
-	PaymentOperation,
-	PaymentResult,
-	PaymentStatus,
-	ResultCode
-} from './types/Payment'
+import { ApplePayInitPayload, GooglePayInitPayload, InitPayload, InputPayload, OneClickInitPayload, PaymentMethod, PaymentOperation, PaymentResult } from './types/Payment'
 
 import moment from 'moment'
 import { Config } from './types/Config'
 import GatewayError from './types/GatewayError'
 import VerificationError from './types/VerificationError'
 
-export { Currency, Language, ResultCode, PaymentStatus, GatewayError, VerificationError }
+export { GatewayError, VerificationError }
 export class CSOBPaymentModule {
 	private logger: Logger
 	private config: Config
@@ -76,7 +63,7 @@ export class CSOBPaymentModule {
 		payload['merchantId'] = this.config.merchantId
 		payload['dttm'] = this.createDttm()
 		payload['signature'] = this.sign(this.createPayloadMessage(payload))
-		payload['payload'] = '@TODO'
+		payload['payload'] = input.payload
 		return this.commonInit(input, '/googlepay/init')
 	}
 
@@ -85,62 +72,16 @@ export class CSOBPaymentModule {
 		payload['merchantId'] = this.config.merchantId
 		payload['dttm'] = this.createDttm()
 		payload['signature'] = this.sign(this.createPayloadMessage(payload))
-		payload['payload'] = '@TODO'
+		payload['payload'] = input.payload
 		return this.commonInit(input, '/applepay/init')
 	}
 
-	async oneClickPayment(input: OneClickPaymentInput): Promise<PaymentResult> {
-		const payload = {
-			merchantId: this.config.merchantId,
-			origPayId: input.templatePaymentId,
-			orderNo: input.orderNumber,
-			dttm: this.createDttm(),
-			totalAmount: input.amount,
-			currency: input.currency
-		}
+	async oneClickPayment(input: OneClickInitPayload): Promise<PaymentResult> {
+		const payload = input
+		payload['merchantId'] = this.config.merchantId
+		payload['dttm'] = this.createDttm()
 		payload['signature'] = this.sign(this.createPayloadMessage(payload))
-		let result
-		try {
-			result = await superagent
-				.post(`${this.config.gateUrl}/payment/oneclick/init`)
-				.send(payload)
-
-			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-				if (result.body.resultCode.toString() === '0') {
-					const startPayload = {
-						merchantId: this.config.merchantId,
-						payId: result.body.payId,
-						dttm: this.createDttm()
-					}
-
-					let startResult
-					startPayload['signature'] = this.sign(this.createPayloadMessage(startPayload))
-					startResult = await superagent
-						.post(`${this.config.gateUrl}/payment/oneclick/start`)
-						.send(startPayload)
-
-					if (this.verify(this.createResultMessage(startResult.body), startResult.body.signature)) {
-						if (startResult.body.resultCode.toString() === '0') {
-							return startResult.body
-						}
-					} else {
-						this.logger.error({ result: startResult }, 'Verification failed')
-						throw new VerificationError('Verification failed')
-					}
-
-					this.logger.error({ result: startResult }, 'One click payment failed')
-				}
-
-				this.logger.error({ result }, 'One click payment failed')
-				throw new GatewayError('Payment failed', result.body)
-			} else {
-				this.logger.error({ result }, 'Verification failed')
-				throw new VerificationError('Verification failed')
-			}
-		} catch (err) {
-			this.logger.error({ err }, 'Unknown error')
-			throw new Error(err)
-		}
+		return this.commonInit(input, '/oneclick/init')
 	}
 
 	public createPaymentPayload(payload: InputPayload, oneClick: boolean): any {
@@ -257,21 +198,23 @@ export class CSOBPaymentModule {
 		throw new VerificationError('Verification failed')
 	}
 
-	public async echo(method = 'POST', type?: "googlepay" | "applepay") {
+	public async echo(method = 'POST', type?: "googlepay" | "applepay" | "oneclick", origPayId?: string) {
 		const urlPaths = {
 			default: "/echo",
 			googlepay: "/googlepay/echo",
 			applepay: "/applepay/echo",
+			oneclick: "/oneclick/echo",
 		}
 		const urlPath = urlPaths[type] || urlPaths.default
 
 		const payload = {
 			merchantId: this.config.merchantId,
 			dttm: this.createDttm(),
-			signature: null
+			origPayId,
+			signature: null,
 		}
-
 		payload['signature'] = this.sign(this.createPayloadMessage(payload))
+
 		let result
 		try {
 			if (method === 'POST') {

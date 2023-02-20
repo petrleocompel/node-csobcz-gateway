@@ -137,3 +137,10 @@ export interface ApplePayInitPayload extends CommonInitPayload {
 	payload: string, // JSON string
 	sdkUsed?: string,
 }
+
+export interface OneClickInitPayload extends CommonInitPayload {
+	origPayId?: string,
+	clientIp?: string,
+	clientInitiated?: boolean,
+	sdkUsed?: string,
+}

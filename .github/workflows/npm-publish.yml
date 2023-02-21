@@ -3,6 +3,10 @@
 
 name: Node.js Package
 
+env:
+  MERCHANT_KEY_NAME: ${{ vars.MERCHANT_KEY_NAME }}
+  MERCHANT_PUB_NAME: ${{ vars.MERCHANT_PUB_NAME }}
+
 on:
   release:
     types: [created]
@@ -16,9 +20,16 @@ jobs:
         with:
           node-version: 16
       - run: npm ci
-      - run: echo $MERCHANT_KEY > test/cert/$MERCHANT_KEY_NAME
-      - run: echo $MERCHANT_PUB > test/cert/$MERCHANT_PUB_NAME
-      - run: npm test
+      - run: echo "$MERCHANT_KEY" > test/cert/$MERCHANT_KEY_NAME
+        env:
+          MERCHANT_KEY: ${{ secrets.MERCHANT_KEY }}
+      - run: echo "$MERCHANT_PUB" > test/cert/$MERCHANT_PUB_NAME
+        env:
+          MERCHANT_PUB: ${{ secrets.MERCHANT_PUB }}
+      - name: Run tests
+        run: npm run test
+        env:
+          MERCHANT_ID: ${{ secrets.MERCHANT_ID }}
       - run: npm run build
 
   publish-npm:
@@ -31,6 +42,6 @@ jobs:
           node-version: 16
           registry-url: https://registry.npmjs.org/
       - run: npm ci
-      - run: npm publish
+      - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}

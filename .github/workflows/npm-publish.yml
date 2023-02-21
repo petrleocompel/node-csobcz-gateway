@@ -16,6 +16,8 @@ jobs:
         with:
           node-version: 16
       - run: npm ci
+      - run: echo $MERCHANT_KEY > test/cert/$MERCHANT_KEY_NAME
+      - run: echo $MERCHANT_PUB > test/cert/$MERCHANT_PUB_NAME
       - run: npm test
       - run: npm run build
 

@@ -19,11 +19,11 @@ const keyName = `rsa_${merchantId}`;
 const config = {
   gateUrl: 'https://iapi.iplatebnibrana.csob.cz/api/v1.8',
   privateKey: fs.readFileSync(
-    path.join(__dirname, 'cert', `${keyName}.key`),
+    path.join(__dirname, 'cert', process.env.MERCHANT_KEY_NAME ?? `${keyName}.key`),
     'utf-8'
   ),
   merchantPublicKey: fs.readFileSync(
-    path.join(__dirname, 'cert', `${keyName}.pub`),
+    path.join(__dirname, 'cert', process.env.MERCHANT_PUB_NAME ?? `${keyName}.pub`),
     'utf-8'
   ),
   bankPublicKey: fs.readFileSync(

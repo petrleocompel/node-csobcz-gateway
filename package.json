@@ -1,6 +1,6 @@
 {
-  "name": "@luchalupa/csobcz_payment_gateway",
-  "version": "0.6.9",
+  "name": "@petrleocompel/csobcz_payment_gateway",
+  "version": "1.0.3",
   "description": "CSOB CZ payment gateway module",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -36,13 +36,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LukasChalupa/node-csobcz-gateway.git"
+    "url": "git+https://github.com/petrleocompel/node-csobcz-gateway.git"
   },
   "bugs": {
-    "url": "https://github.com/LukasChalupa/node-csobcz-gateway/issues"
+    "url": "https://github.com/petrleocompel/node-csobcz-gateway/issues"
   },
   "files": [
     "/build/"
   ],
-  "homepage": "https://github.com/LukasChalupa/node-csobcz-gateway#readme"
+  "homepage": "https://github.com/petrleocompel/node-csobcz-gateway#readme"
 }

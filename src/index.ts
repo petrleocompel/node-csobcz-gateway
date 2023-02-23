@@ -228,13 +228,13 @@ export class CSOBPaymentModule {
 					.send()
 			}
 
-			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
-				if (result.body.resultCode.toString() === '0') {
-					return result
-				}
-
-				throw new GatewayError('Echo failed', result.body)
+			// if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+			if (result.body.resultCode.toString() === '0') {
+				return result.body
 			}
+
+			throw new GatewayError('Echo failed', result.body)
+			// }
 		} catch (err) {
 			console.log(err)
 		}

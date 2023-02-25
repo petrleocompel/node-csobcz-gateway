@@ -20,6 +20,7 @@ export enum PaymentStatus {
   CREATED = 1,
   IN_PROGRESS = 2,
   CANCELED = 3,
+  APPROVED = 4,
   REVERSED = 5,
   DECLINED = 6,
   WAITING_FOR_SETTLE = 7,

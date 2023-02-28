@@ -1,21 +1,35 @@
 name: Test
 
+env:
+  MERCHANT_KEY_NAME: ${{ vars.MERCHANT_KEY_NAME }}
+  MERCHANT_PUB_NAME: ${{ vars.MERCHANT_PUB_NAME }}
+
 on:
   push:
+  pull_request:
+    branches:    
+      - main
 
 jobs:
   check:
-    name: Check
+    name: Check tests and compilation
     runs-on: ubuntu-latest
-
     steps:
-      - name: Setup repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
-          fetch-depth: 0
-
+          node-version: 16
       - name: Install dependencies
         run: npm ci
-
+      - run: echo "$MERCHANT_KEY" > test/cert/$MERCHANT_KEY_NAME
+        env:
+          MERCHANT_KEY: ${{ secrets.MERCHANT_KEY }}
+      - run: echo "$MERCHANT_PUB" > test/cert/$MERCHANT_PUB_NAME
+        env:
+          MERCHANT_PUB: ${{ secrets.MERCHANT_PUB }}
       - name: Run tests
         run: npm run test
+        env:
+          MERCHANT_ID: ${{ secrets.MERCHANT_ID }}
+      - name: Run build
+        run: npm run build

@@ -1,0 +1,48 @@
+# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
+# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
+
+name: Node.js Package
+
+env:
+  MERCHANT_KEY_NAME: ${{ vars.MERCHANT_KEY_NAME }}
+  MERCHANT_PUB_NAME: ${{ vars.MERCHANT_PUB_NAME }}
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - run: npm ci
+      - run: echo "$MERCHANT_KEY" > test/cert/$MERCHANT_KEY_NAME
+        env:
+          MERCHANT_KEY: ${{ secrets.MERCHANT_KEY }}
+      - run: echo "$MERCHANT_PUB" > test/cert/$MERCHANT_PUB_NAME
+        env:
+          MERCHANT_PUB: ${{ secrets.MERCHANT_PUB }}
+      - name: Run tests
+        run: npm run test
+        env:
+          MERCHANT_ID: ${{ secrets.MERCHANT_ID }}
+      - run: npm run build
+
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org/
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.npm_token}}

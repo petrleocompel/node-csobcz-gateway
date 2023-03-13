@@ -1,5 +1,5 @@
-import { Customer } from './Customer';
-import { Item, Order } from './Order';
+import { Customer } from './Customer'
+import { Item, Order } from './Order'
 
 export enum ResultCode {
 	OK = 0,
@@ -77,80 +77,80 @@ export enum PaymentMethod {
 }
 
 export interface PaymentResult {
-	payId: string;
-	dttm: string;
-	resultCode: ResultCode;
-	resultMessage: string;
-	signature: string;
-	paymentStatus?: PaymentStatus;
-	authCode?: string; // only if resultCode in [ 4, 7, 8 ]
+	payId: string
+	dttm: string
+	resultCode: ResultCode
+	resultMessage: string
+	signature: string
+	paymentStatus?: PaymentStatus
+	authCode?: string // only if resultCode in [ 4, 7, 8 ]
 }
 
 export interface PaymentStatusResult {
-	dttm: string;
-	signature: string;
-	payId: string;
-	resultCode: ResultCode;
-	resultMessage: string;
-	paymentStatus?: PaymentStatus;
+	dttm: string
+	signature: string
+	payId: string
+	resultCode: ResultCode
+	resultMessage: string
+	paymentStatus?: PaymentStatus
 }
 
 export interface OneClickPaymentInput {
-	templatePaymentId: string;
-	amount: number;
-	orderNumber: string;
-	currency: Currency;
+	templatePaymentId: string
+	amount: number
+	orderNumber: string
+	currency: Currency
 }
 
 export interface InputPayload {
-	orderNo: string;
-	totalAmount: number;
-	currency: Currency;
-	language: Language;
-	cart?: Item[];
-	description: string;
-	origPayId?: string;
+	orderNo: string
+	totalAmount: number
+	currency: Currency
+	language: Language
+	cart?: Item[]
+	description: string
+	origPayId?: string
 }
 
 interface CommonInitPayload {
-	orderNo: string;
-	totalAmount: number;
-	currency: Currency;
-	closePayment?: boolean;
-	returnUrl: string;
-	returnMethod: ReturnMethod;
-	customer?: Customer;
-	order?: Order;
-	merchantData?: string;
-	ttlSec?: number;
+	orderNo: string
+	totalAmount: number
+	currency: Currency
+	closePayment?: boolean
+	returnUrl: string
+	returnMethod: ReturnMethod
+	customer?: Customer
+	order?: Order
+	merchantData?: string
+	ttlSec?: number
 }
 
 export interface InitPayload extends CommonInitPayload {
-	payOperation?: PaymentOperation;
-	payMethod?: PaymentMethod;
-	customerId?: string;
-	cart: Item[];
-	language: Language;
-	logoVersion?: number;
-	colorSchemeVersion?: number;
-	customExpiry?: number;
+	payOperation?: PaymentOperation
+	payMethod?: PaymentMethod
+	customerId?: string
+	cart: Item[]
+	language: Language
+	logoVersion?: number
+	colorSchemeVersion?: number
+	customExpiry?: number
 }
 
 export interface GooglePayInitPayload extends CommonInitPayload {
-	clientIp: string;
-	payload: string; // JSON string
-	sdkUsed?: string;
+	clientIp: string
+	payload: string // JSON string
+	sdkUsed?: string
 }
 
 export interface ApplePayInitPayload extends CommonInitPayload {
-	clientIp: string;
-	payload: string; // JSON string
-	sdkUsed?: string;
+	clientIp: string
+	payload: string // JSON string
+	sdkUsed?: string
 }
 
 export interface OneClickInitPayload extends CommonInitPayload {
-	origPayId?: string;
-	clientIp?: string;
-	clientInitiated?: boolean;
-	sdkUsed?: string;
+	origPayId?: string
+	clientIp?: string
+	clientInitiated?: boolean
+	sdkUsed?: string
 }

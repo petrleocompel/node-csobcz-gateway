@@ -93,6 +93,11 @@ export interface PaymentStatusResult {
 	resultCode: ResultCode
 	resultMessage: string
 	paymentStatus?: PaymentStatus
+	authCode?: string
+	statusDetail?: string
+	actions?: {
+		[key: string]: string // @TODO detailed type of browserInit and sdkInit
+	}
 }
 
 export interface OneClickPaymentInput {

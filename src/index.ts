@@ -59,6 +59,13 @@ export class CSOBPaymentModule {
 	}
 
 	async commonInit(payload, initUrlPath: string): Promise<PaymentResult> {
+		console.log('--------------------------------------')
+		console.log(new Date())
+		console.log('--------------------------------------')
+		console.log(payload)
+		console.log('--------------------------------------')
+		console.log(`${this.config.gateUrl}${initUrlPath}`)
+		console.log('--------------------------------------')
 		try {
 			const result = await superagent.post(`${this.config.gateUrl}${initUrlPath}`).send(payload)
 			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
@@ -313,13 +320,15 @@ export class CSOBPaymentModule {
 
 	private createDttm() {
 		const now = new Date()
+		now.setUTCHours(now.getUTCHours() + 1)
+
 		return (
-			now.getFullYear() +
-			now.getMonth().toString().padStart(2, '0') +
-			now.getDate().toString().padStart(2, '0') +
-			now.getHours().toString().padStart(2, '0') +
-			now.getMinutes().toString().padStart(2, '0') +
-			now.getSeconds().toString().padStart(2, '0')
+			now.getUTCFullYear() +
+			now.getUTCMonth().toString().padStart(2, '0') +
+			now.getUTCDate().toString().padStart(2, '0') +
+			now.getUTCHours().toString().padStart(2, '0') +
+			now.getUTCMinutes().toString().padStart(2, '0') +
+			now.getUTCSeconds().toString().padStart(2, '0')
 		)
 	}
 

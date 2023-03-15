@@ -284,11 +284,13 @@ export class CSOBPaymentModule {
 			'orderNo',
 			'payId',
 			'dttm',
+			'clientIp',
 			'payOperation',
 			'payMethod',
 			'totalAmount',
 			'currency',
 			'closePayment',
+			'payload',
 			'returnUrl',
 			'returnMethod',
 		]
@@ -340,7 +342,8 @@ export class CSOBPaymentModule {
 		if (!keys) {
 			keys = Object.keys(data)
 		}
-		return keys.map((key) => data[key]).filter((item) => typeof item !== 'undefined')
+		const filtered = keys.map((key) => data[key]).filter((item) => typeof item !== 'undefined')
+		return filtered
 	}
 
 	private createMessageString(data, keys = []) {

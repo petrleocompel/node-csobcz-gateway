@@ -59,15 +59,20 @@ export class CSOBPaymentModule {
 	}
 
 	async commonInit(payload, initUrlPath: string): Promise<PaymentResult> {
-		console.log('--------------------------------------')
-		console.log(new Date())
-		console.log('--------------------------------------')
-		console.log(payload)
-		console.log('--------------------------------------')
-		console.log(`${this.config.gateUrl}${initUrlPath}`)
-		console.log('--------------------------------------')
+		// console.log('--------------------------------------')
+		// console.log(new Date())
+		// console.log('--------------------------------------')
+		// console.log(payload)
+		// console.log('--------------------------------------')
+		// console.log(`${this.config.gateUrl}${initUrlPath}`)
+		// console.log('--------------------------------------')
 		try {
 			const result = await superagent.post(`${this.config.gateUrl}${initUrlPath}`).send(payload)
+
+			// console.log('--------------------------------------')
+			// console.log("RESULT", result.body)
+			// console.log('--------------------------------------')
+
 			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
 				if (result.body.resultCode.toString() === '0') {
 					return result.body
@@ -89,16 +94,40 @@ export class CSOBPaymentModule {
 		const payload = input
 		payload['merchantId'] = this.config.merchantId
 		payload['dttm'] = this.createDttm()
+
+		// console.log('--------------------------------------')
+		// console.log('--------------------------------------')
+		// console.log('PAYLOAD', payload)
+		// console.log('--------------------------------------')
+		// console.log('PAYLOAD MESSAGE', this.createPayloadMessage(payload))
+		// console.log('--------------------------------------')
+		// console.log('--------------------------------------')
+		// console.log('--------------------------------------')
+
 		payload['signature'] = this.sign(this.createPayloadMessage(payload))
-		return this.commonInit(input, '/payment/init')
+		return this.commonInit(payload, '/payment/init')
 	}
 
 	async googlePayInit(input: GooglePayInitPayload): Promise<PaymentResult> {
 		const payload = input
 		payload['merchantId'] = this.config.merchantId
 		payload['dttm'] = this.createDttm()
-		payload['signature'] = this.sign(this.createPayloadMessage(payload))
 		payload['payload'] = input.payload
+
+		// console.log('--------------------------------------')
+		// console.log('--------------------------------------')
+		// console.log('PAYLOAD', payload)
+		// console.log('--------------------------------------')
+		// console.log('PAYLOAD MESSAGE', this.createPayloadMessage(payload))
+		// console.log('--------------------------------------')
+		// console.log('--------------------------------------')
+		// console.log('--------------------------------------')
+
+		payload['signature'] = this.sign(this.createPayloadMessage(payload))
+
+		// console.log('SIGNATURE', payload['signature'])
+		// console.log('--------------------------------------')
+
 		return this.commonInit(input, '/googlepay/init')
 	}
 
@@ -106,8 +135,8 @@ export class CSOBPaymentModule {
 		const payload = input
 		payload['merchantId'] = this.config.merchantId
 		payload['dttm'] = this.createDttm()
-		payload['signature'] = this.sign(this.createPayloadMessage(payload))
 		payload['payload'] = input.payload
+		payload['signature'] = this.sign(this.createPayloadMessage(payload))
 		return this.commonInit(input, '/applepay/init')
 	}
 
@@ -140,6 +169,39 @@ export class CSOBPaymentModule {
 		)}`
 
 		return url
+	}
+
+	async processAppPayment(type: 'googlepay' | 'applepay', payId: string, fingerprint: { [key: string]: string }) {
+		const dttm = this.createDttm()
+
+		const payload = {
+			merchantId: this.config.merchantId,
+			payId,
+			dttm,
+			fingerprint,
+			signature: this.sign(`${this.config.merchantId}|${payId}|${dttm}|${JSON.stringify(fingerprint)}`),
+		}
+
+		const url = `${this.config.gateUrl}/${type}/process`
+
+		try {
+			const result = await superagent.post(`${this.config.gateUrl}${url}`).send(payload)
+
+			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+				if (result.body.resultCode.toString() === '0') {
+					return result.body
+				}
+
+				this.logger?.error({ result }, 'Process payment operation failed')
+				throw new GatewayError('Process payment operation failed', result.body)
+			} else {
+				this.logger?.error({ result }, 'Verification failed')
+				throw new VerificationError('Verification failed')
+			}
+		} catch (err) {
+			this.logger?.error({ err }, 'Uknown error')
+			throw err
+		}
 	}
 
 	async status(id: string): Promise<PaymentStatusResult> {

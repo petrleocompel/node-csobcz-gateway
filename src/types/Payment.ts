@@ -45,6 +45,7 @@ export enum ReturnMethod {
 }
 
 export enum Language {
+	CZ = 'CS',
 	CS = 'CS',
 	EN = 'EN',
 	DE = 'DE',

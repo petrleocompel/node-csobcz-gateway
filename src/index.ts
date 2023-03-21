@@ -22,6 +22,7 @@ import { Config } from './types/Config'
 import GatewayError from './types/GatewayError'
 import { Logger } from './types/Logger'
 import VerificationError from './types/VerificationError'
+import { getObjectTextToSign } from './utils/getObjectTextToSign'
 
 export {
 	GatewayError,
@@ -59,19 +60,8 @@ export class CSOBPaymentModule {
 	}
 
 	async commonInit(payload, initUrlPath: string): Promise<PaymentResult> {
-		// console.log('--------------------------------------')
-		// console.log(new Date())
-		// console.log('--------------------------------------')
-		// console.log(payload)
-		// console.log('--------------------------------------')
-		// console.log(`${this.config.gateUrl}${initUrlPath}`)
-		// console.log('--------------------------------------')
 		try {
 			const result = await superagent.post(`${this.config.gateUrl}${initUrlPath}`).send(payload)
-
-			// console.log('--------------------------------------')
-			// console.log("RESULT", result.body)
-			// console.log('--------------------------------------')
 
 			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
 				if (result.body.resultCode.toString() === '0') {
@@ -94,16 +84,6 @@ export class CSOBPaymentModule {
 		const payload = input
 		payload['merchantId'] = this.config.merchantId
 		payload['dttm'] = this.createDttm()
-
-		// console.log('--------------------------------------')
-		// console.log('--------------------------------------')
-		// console.log('PAYLOAD', payload)
-		// console.log('--------------------------------------')
-		// console.log('PAYLOAD MESSAGE', this.createPayloadMessage(payload))
-		// console.log('--------------------------------------')
-		// console.log('--------------------------------------')
-		// console.log('--------------------------------------')
-
 		payload['signature'] = this.sign(this.createPayloadMessage(payload))
 		return this.commonInit(payload, '/payment/init')
 	}
@@ -113,21 +93,7 @@ export class CSOBPaymentModule {
 		payload['merchantId'] = this.config.merchantId
 		payload['dttm'] = this.createDttm()
 		payload['payload'] = input.payload
-
-		// console.log('--------------------------------------')
-		// console.log('--------------------------------------')
-		// console.log('PAYLOAD', payload)
-		// console.log('--------------------------------------')
-		// console.log('PAYLOAD MESSAGE', this.createPayloadMessage(payload))
-		// console.log('--------------------------------------')
-		// console.log('--------------------------------------')
-		// console.log('--------------------------------------')
-
 		payload['signature'] = this.sign(this.createPayloadMessage(payload))
-
-		// console.log('SIGNATURE', payload['signature'])
-		// console.log('--------------------------------------')
-
 		return this.commonInit(input, '/googlepay/init')
 	}
 
@@ -171,21 +137,27 @@ export class CSOBPaymentModule {
 		return url
 	}
 
-	async processAppPayment(type: 'googlepay' | 'applepay', payId: string, fingerprint: { [key: string]: string }) {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	async processAppPayment(type: 'googlepay' | 'applepay', payId: string, fingerprint?: unknown) {
 		const dttm = this.createDttm()
 
-		const payload = {
+		//const textToSign = `${this.config.merchantId}|${payId}|${dttm}${fingerprint ? '|' + fingerTextToSign : ''}`
+
+		const objectToSign = {
 			merchantId: this.config.merchantId,
 			payId,
 			dttm,
 			fingerprint,
-			signature: this.sign(`${this.config.merchantId}|${payId}|${dttm}|${JSON.stringify(fingerprint)}`),
+		}
+		const payload = {
+			...objectToSign,
+			signature: this.sign(getObjectTextToSign(objectToSign)),
 		}
 
 		const url = `${this.config.gateUrl}/${type}/process`
 
 		try {
-			const result = await superagent.post(`${this.config.gateUrl}${url}`).send(payload)
+			const result = await superagent.post(url).send(payload)
 
 			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
 				if (result.body.resultCode.toString() === '0') {

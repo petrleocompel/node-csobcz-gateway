@@ -138,11 +138,8 @@ export class CSOBPaymentModule {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	async processAppPayment(type: 'googlepay' | 'applepay', payId: string, fingerprint?: unknown) {
+	async processAppPayment(type: 'googlepay' | 'applepay', payId: string, fingerprint?: { [key: string]: unknown }) {
 		const dttm = this.createDttm()
-
-		//const textToSign = `${this.config.merchantId}|${payId}|${dttm}${fingerprint ? '|' + fingerTextToSign : ''}`
-
 		const objectToSign = {
 			merchantId: this.config.merchantId,
 			payId,
@@ -327,6 +324,8 @@ export class CSOBPaymentModule {
 			'payload',
 			'returnUrl',
 			'returnMethod',
+			'clientInitiated',
+			'sdkUsed',
 		]
 		const cartItemKeys = ['name', 'quantity', 'amount', 'description']
 		let payloadMessageArray = this.createMessageArray(payload, payloadKeys)
@@ -395,6 +394,13 @@ export class CSOBPaymentModule {
 			'authCode',
 			'merchantData',
 		]
-		return this.createMessageString(result, resultKeys)
+
+		let messageString = this.createMessageString(result, resultKeys)
+
+		if (result.actions) {
+			messageString = messageString.concat('|' + getObjectTextToSign(result.actions))
+		}
+
+		return messageString
 	}
 }

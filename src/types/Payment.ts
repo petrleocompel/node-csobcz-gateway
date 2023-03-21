@@ -145,21 +145,16 @@ export interface InitPayload extends CommonInitPayload {
 	customExpiry?: number
 }
 
-export interface GooglePayInitPayload extends CommonInitPayload {
+interface OtherInitPayload extends CommonInitPayload {
 	clientIp: string
 	payload: string // JSON string
-	sdkUsed?: string
+	sdkUsed?: boolean
 }
 
-export interface ApplePayInitPayload extends CommonInitPayload {
-	clientIp: string
-	payload: string // JSON string
-	sdkUsed?: string
-}
+export type GooglePayInitPayload = OtherInitPayload
 
-export interface OneClickInitPayload extends CommonInitPayload {
-	origPayId?: string
-	clientIp?: string
+export type ApplePayInitPayload = OtherInitPayload
+
+export interface OneClickInitPayload extends OtherInitPayload {
 	clientInitiated?: boolean
-	sdkUsed?: string
 }

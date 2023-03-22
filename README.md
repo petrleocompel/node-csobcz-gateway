@@ -1,14 +1,16 @@
-# ČSOB CZ payment modules [![npm](https://img.shields.io/npm/v/@luchalupa/csobcz_payment_gateway.svg)](https://www.npmjs.com/package/@luchalupa/csobcz_payment_gateway) ![npm type definitions](https://img.shields.io/npm/types/@luchalupa/csobcz_payment_gateway)
+# ČSOB CZ payment modules [![npm](https://img.shields.io/npm/v/@petrleocompel/csobcz_payment_gateway.svg)](https://www.npmjs.com/package/@petrleocompel/csobcz_payment_gateway) ![npm type definitions](https://img.shields.io/npm/types/@petrleocompel/csobcz_payment_gateway) ![tests](https://img.shields.io/github/actions/workflow/status/petrleocompel/node-csobcz-gateway/test.yml?branch=release&label=test)
 
-[Source](https://github.com/LukasChalupa/node-csobcz-gateway) |
+[Source](https://github.com/petrleocompel/node-csobcz-gateway) |
 [Gateway documentation](https://github.com/csob/paymentgateway)
+
+> :warning: This is fork - for relasing my custom package due safety, testing and optimalizations :warning:
 
 Module for ČSOB CZ payment gateway, supports gateway version 1.9 (although not all features are yet implemented)
 
 ## Instalation
 
 ```sh
-npm install @luchalupa/csobcz_payment_gateway
+npm install @petrleocompel/csobcz_payment_gateway
 ```
 
 ## Configuration
@@ -17,19 +19,19 @@ npm install @luchalupa/csobcz_payment_gateway
 
 All keys are strings, for multiline env strings (certificates) check [dotenv#rules](https://www.npmjs.com/package/dotenv#rules).
 
-| variable name        | description                         |
-| -------------------- | ----------------------------------- |
-| GATEWAY_URL          | payment gateway address             |
-| MERCHANT_PRIVATE_KEY | merchant private key                |
-| MERCHANT_PUBLIC_KEY  | merchant public key                 |
-| BANK_PUBLIC_KEY      | bank public key                     |
-| CALLBACK_URL         | url called by gateway after payment |
-| MERCHANT_ID          | merchant id from gateway provider   |
+| variable name          | description                         |
+| ---------------------- | ----------------------------------- |
+| `GATEWAY_URL`          | payment gateway address             |
+| `MERCHANT_PRIVATE_KEY` | merchant private key                |
+| `MERCHANT_PUBLIC_KEY`  | merchant public key                 |
+| `BANK_PUBLIC_KEY`      | bank public key                     |
+| `CALLBACK_URL`         | url called by gateway after payment |
+| `MERCHANT_ID`          | merchant id from gateway provider   |
 
 Alternatively using config:
 
 ```javascript
-const { CSOBPaymentModule } = require('csobcz_payment_gateway');
+import { CSOBPaymentModule } from '@petrleocompel/csobcz_payment_gateway';
 
 const gateway = new CSOBPaymentModule({
   logging: ...,

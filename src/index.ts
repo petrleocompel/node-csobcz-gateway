@@ -63,6 +63,14 @@ export class CSOBPaymentModule {
 		try {
 			const result = await superagent.post(`${this.config.gateUrl}${initUrlPath}`).send(payload)
 
+			console.log('---------------------------')
+			console.log('---------------------------')
+			console.log(payload)
+			console.log('---------------------------')
+			console.log(result.body)
+			console.log('---------------------------')
+			console.log('---------------------------')
+
 			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
 				if (result.body.resultCode.toString() === '0') {
 					return result.body
@@ -110,6 +118,13 @@ export class CSOBPaymentModule {
 		const payload = input
 		payload['merchantId'] = this.config.merchantId
 		payload['dttm'] = this.createDttm()
+
+		console.log('---------------------------')
+		console.log(payload)
+		console.log('TEXT TO SIGN')
+		console.log(this.createPayloadMessage(payload))
+		console.log('---------------------------')
+
 		payload['signature'] = this.sign(this.createPayloadMessage(payload))
 		return this.commonInit(input, '/oneclick/init')
 	}

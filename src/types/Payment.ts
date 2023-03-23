@@ -155,6 +155,10 @@ export type GooglePayInitPayload = OtherInitPayload
 
 export type ApplePayInitPayload = OtherInitPayload
 
-export interface OneClickInitPayload extends OtherInitPayload {
+export interface OneClickInitPayload extends CommonInitPayload {
+	origPayId: string
+	clientIp?: string
 	clientInitiated?: boolean
+	sdkUsed?: boolean
+	language?: Language
 }

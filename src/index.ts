@@ -62,15 +62,6 @@ export class CSOBPaymentModule {
 	async commonInit(payload, initUrlPath: string): Promise<PaymentResult> {
 		try {
 			const result = await superagent.post(`${this.config.gateUrl}${initUrlPath}`).send(payload)
-
-			console.log('---------------------------')
-			console.log('---------------------------')
-			console.log(payload)
-			console.log('---------------------------')
-			console.log(result.body)
-			console.log('---------------------------')
-			console.log('---------------------------')
-
 			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
 				if (result.body.resultCode.toString() === '0') {
 					return result.body
@@ -118,13 +109,6 @@ export class CSOBPaymentModule {
 		const payload = input
 		payload['merchantId'] = this.config.merchantId
 		payload['dttm'] = this.createDttm()
-
-		console.log('---------------------------')
-		console.log(payload)
-		console.log('TEXT TO SIGN')
-		console.log(this.createPayloadMessage(payload))
-		console.log('---------------------------')
-
 		payload['signature'] = this.sign(this.createPayloadMessage(payload))
 		return this.commonInit(input, '/oneclick/init')
 	}
@@ -178,6 +162,37 @@ export class CSOBPaymentModule {
 
 				this.logger?.error({ result }, 'Process payment operation failed')
 				throw new GatewayError('Process payment operation failed', result.body)
+			} else {
+				this.logger?.error({ result }, 'Verification failed')
+				throw new VerificationError('Verification failed')
+			}
+		} catch (err) {
+			this.logger?.error({ err }, 'Uknown error')
+			throw err
+		}
+	}
+
+	async processOneClickPayment(payId: string) {
+		const objectToSign = {
+			merchantId: this.config.merchantId,
+			payId,
+			dttm: this.createDttm(),
+		}
+		const payload = {
+			...objectToSign,
+			signature: this.sign(getObjectTextToSign(objectToSign)),
+		}
+
+		try {
+			const result = await superagent.post(`${this.config.gateUrl}/oneclick/process/`).send(payload)
+
+			if (this.verify(this.createResultMessage(result.body), result.body.signature)) {
+				if (result.body.resultCode.toString() === '0') {
+					return result.body
+				}
+
+				this.logger?.error({ result }, 'Process failed')
+				throw new GatewayError('Process failed', result.body)
 			} else {
 				this.logger?.error({ result }, 'Verification failed')
 				throw new VerificationError('Verification failed')

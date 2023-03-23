@@ -47,13 +47,13 @@ Attribute `logging` should be `boolean` or `function` used for debug info. By se
 
 ```json
 {
-  "merchantId": "...",
-  "payOperation": "payment",
-  "payMethod": "card",
-  "currency": "CZK",
-  "language": "CZ",
-  "returnUrl": "...",
-  "returnMethod": "POST"
+	"merchantId": "...",
+	"payOperation": "payment",
+	"payMethod": "card",
+	"currency": "CZK",
+	"language": "CZ",
+	"returnUrl": "...",
+	"returnMethod": "POST"
 }
 ```
 
@@ -61,8 +61,9 @@ Attribute `logging` should be `boolean` or `function` used for debug info. By se
 
 - `status(string payId)` - returns payment status
 - `init(json payload)` - payment init
-- `googlePayInit(json payload)` - GooglePay payment init (not fully implemented)
-- `applePayInit(json payload)` - ApplePay payment init (not fully implemented)
+- `googlePayInit(json payload)` - GooglePay payment init
+- `applePayInit(json payload)` - ApplePay payment init
+- `oneClickInit(json payload)` - OneClick payment init
 - `reverse(string payId)` - reverse payment with given payId
 - `close(string payId)` - close payment with given payId
 - `refund(string payId, int amount)` - refund payment with given payId, if
@@ -70,6 +71,9 @@ Attribute `logging` should be `boolean` or `function` used for debug info. By se
 - `echo(string method)` - echo test, method is either `GET` or `POST` (default)
 - `verifyResult(json payload)` - if **success** returns `payload` else returns error,
   payload is json returned from gateway callback.
+- `getRedirectUrl(string payId)` - returns url to gateway
+- `processAppPayment("applepay" | "googlepay" type, string payId, object fingerprint)` - processes google or apple payment
+- `processOneClickPayment(string payId)` - processes oneClick paymment
 
 ---
 
@@ -80,16 +84,16 @@ Attribute `logging` should be `boolean` or `function` used for debug info. By se
 
 ```json
 {
-  "id": "order1",
-  "description": "Moje order",
-  "items": [
-    {
-      "name": "Nákup: vasobchod.cz",
-      "quantity": 1,
-      "amount": 200,
-      "description": "Produkt 1"
-    }
-  ]
+	"id": "order1",
+	"description": "Moje order",
+	"items": [
+		{
+			"name": "Nákup: vasobchod.cz",
+			"quantity": 1,
+			"amount": 200,
+			"description": "Produkt 1"
+		}
+	]
 }
 ```
 
@@ -106,21 +110,21 @@ All methods returns `Promise` when **resolved** is `JSON` payload specified in
 
 ```json
 {
-  "url": "https://api.platebnibrana.csob.cz/api/v1.7/payment/process/MERCHANDID/PAYID/20180504105513/KZr8D0z%2FVYFlX2fy0bs2NTafv...."
+	"url": "https://api.platebnibrana.csob.cz/api/v1.7/payment/process/MERCHANDID/PAYID/20180504105513/KZr8D0z%2FVYFlX2fy0bs2NTafv...."
 }
 ```
 
 ## Example usage
 
 ```javascript
-const gateway = require("csobcz_payment_gateway");
+const gateway = require('csobcz_payment_gateway')
 
 gateway
-  .echo("GET")
-  .then((result) => {
-    logger.log(result);
-  })
-  .catch((e) => {
-    logger.error(e);
-  });
+	.echo('GET')
+	.then((result) => {
+		logger.log(result)
+	})
+	.catch((e) => {
+		logger.error(e)
+	})
 ```

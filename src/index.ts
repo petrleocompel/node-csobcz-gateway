@@ -105,7 +105,7 @@ export class CSOBPaymentModule {
 		return this.commonInit(input, '/applepay/init')
 	}
 
-	async oneClickPayment(input: OneClickInitPayload): Promise<PaymentResult> {
+	async oneClickInit(input: OneClickInitPayload): Promise<PaymentResult> {
 		const payload = input
 		payload['merchantId'] = this.config.merchantId
 		payload['dttm'] = this.createDttm()

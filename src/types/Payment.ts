@@ -84,6 +84,7 @@ export interface PaymentResult {
 	resultMessage: string
 	signature: string
 	paymentStatus?: PaymentStatus
+	statusDetail?: string
 	authCode?: string // only if resultCode in [ 4, 7, 8 ]
 	actions?: {
 		[key: string]: string // @TODO detailed type of browserInit and sdkInit

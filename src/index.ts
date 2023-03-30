@@ -421,6 +421,7 @@ export class CSOBPaymentModule {
 			'resultCode',
 			'resultMessage',
 			'paymentStatus',
+			'statusDetail',
 			'authCode',
 			'merchantData',
 		]
